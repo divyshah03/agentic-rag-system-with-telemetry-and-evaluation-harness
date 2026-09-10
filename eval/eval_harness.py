@@ -133,16 +133,16 @@ async def run_ingest(pdf_path: str, source_id: str, collection: str, timeout_s: 
     return await wait_for_run_output(event_id, timeout_s=timeout_s)
 
 
-async def ingest_sample_pdfs() -> None:
-    print(f"Ingesting {len(SAMPLE_PDFS)} sample PDFs (respecting the pipeline's 2/min "
-          f"ingest throttle, this may take a minute or two)...")
+async def ingest_sample_pdfs(collection: str) -> None:
+    print(f"Ingesting {len(SAMPLE_PDFS)} sample PDFs into Qdrant collection '{collection}' "
+          f"(respecting the pipeline's 2/min ingest throttle, this may take a minute or two)...")
     for source_id, path in SAMPLE_PDFS.items():
         if not path.exists():
             print(f"  ! skipping {source_id}: file not found at {path}")
             continue
         print(f"  ingesting {source_id} ...", end=" ", flush=True)
         try:
-            result = await run_ingest(str(path), source_id)
+            result = await run_ingest(str(path), source_id, collection)
             print(f"ingested {result.get('ingested', '?')} chunks")
         except Exception as e:
             print(f"FAILED: {e}")
@@ -237,7 +237,7 @@ def retrieval_metrics(source_pdf: str, retrieved_chunks: list[dict]) -> dict:
     }
 
 
-async def evaluate_item(item: dict, top_k: int, semaphore: asyncio.Semaphore) -> dict:
+async def evaluate_item(item: dict, top_k: int, collection: str, semaphore: asyncio.Semaphore) -> dict:
     async with semaphore:
         base = {
             "id": item["id"],
@@ -247,7 +247,7 @@ async def evaluate_item(item: dict, top_k: int, semaphore: asyncio.Semaphore) ->
             "expected_answer": item["expected_answer"],
         }
         try:
-            output = await run_query(item["question"], top_k)
+            output = await run_query(item["question"], top_k, collection)
         except Exception as e:
             return {**base, "error": str(e), "scoring": {"passed": False}}
 
@@ -280,7 +280,7 @@ async def evaluate_item(item: dict, top_k: int, semaphore: asyncio.Semaphore) ->
         }
 
 
-def compute_summary(results: list[dict], run_label: str, top_k: int, dataset_path: Path) -> dict:
+def compute_summary(results: list[dict], run_label: str, top_k: int, collection: str, dataset_path: Path) -> dict:
     total = len(results)
     errored = [r for r in results if "error" in r]
     factual = [r for r in results if r["question_type"] == "factual"]
@@ -307,6 +307,7 @@ def compute_summary(results: list[dict], run_label: str, top_k: int, dataset_pat
         "run_label": run_label,
         "timestamp": datetime.now().isoformat(),
         "top_k": top_k,
+        "collection": collection,
         "dataset_path": str(dataset_path),
         "total_questions": total,
         "factual_questions": len(factual),
@@ -330,7 +331,8 @@ def print_summary(summary: dict) -> None:
     print("\n" + "=" * 60)
     print(f"  Eval run: {summary['run_label']}  ({summary['timestamp']})")
     print("=" * 60)
-    print(f"  Questions:            {summary['total_questions']} "
+    print(f"  Collection:           {summary['collection']}")
+    print(f"  Questions:            {summary['total_questions']} 
           f"({summary['factual_questions']} factual, {summary['open_ended_questions']} open-ended)")
     print(f"  Errors:               {summary['errors']}")
     print(f"  Exact-match accuracy: {fmt_pct(summary['exact_match_accuracy'])}")
