@@ -178,7 +178,7 @@ uv run python eval/eval_harness.py
 uv run python eval/eval_harness.py --run-label hybrid-retrieval
 ```
 
-The harness runs against its own Qdrant collection (`eval_docs` by default).
+The harness runs against its own Qdrant collection (`eval_docs` by default, override with `--collection`).
 
 **Metrics:**
 - **Retrieval** — Recall@k, MRR (did the right source appear in top-k?)
