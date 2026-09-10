@@ -31,4 +31,5 @@ The pipeline needs three processes besides the UI. Do not start them or run a li
 
 - **Inngest identity:** function IDs are `f"{app_id}-{fn_id}"`, derived only from the explicit `app_id="rag_app"` and `fn_id` strings in `app/main.py`. They do not depend on module paths. Changing either string makes Inngest treat it as a brand-new function.
 - **`source_id` is not a path.** The ingest event's `source_id` is stored as `payload["source"]` in Qdrant and compared against the `source_pdf` field in `eval/dataset/qa_dataset.json`. Keep these as bare filenames (`test.pdf`), not paths, or retrieval metrics will silently score 0.
+- **Qdrant collections are isolated by an event field, not hardcoded.**
 - Keyword arguments in `app/` are written with spaces around `=` (`limit = 2`). Match the surrounding file.
