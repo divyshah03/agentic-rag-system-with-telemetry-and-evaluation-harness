@@ -39,6 +39,11 @@ class QdrantStorage:
                   retrieved.append({"id": r.id, "text": text, "source": source, "score": r.score})
         return {"contexts": contexts,"sources": list(sources), "scores": scores, "retrieved": retrieved}
 
+    def scroll_all(self):
+        documents = []
+        offset = None
+        return documents
+
           
 
 
