@@ -332,7 +332,7 @@ def print_summary(summary: dict) -> None:
     print(f"  Eval run: {summary['run_label']}  ({summary['timestamp']})")
     print("=" * 60)
     print(f"  Collection:           {summary['collection']}")
-    print(f"  Questions:            {summary['total_questions']} 
+    print(f"  Questions:            {summary['total_questions']} "
           f"({summary['factual_questions']} factual, {summary['open_ended_questions']} open-ended)")
     print(f"  Errors:               {summary['errors']}")
     print(f"  Exact-match accuracy: {fmt_pct(summary['exact_match_accuracy'])}")
@@ -345,16 +345,17 @@ def print_summary(summary: dict) -> None:
 
 async def main_async(args: argparse.Namespace) -> None:
     if args.ingest:
-        await ingest_sample_pdfs()
+        await ingest_sample_pdfs(args.collection)
 
     dataset_path = Path(args.dataset)
     dataset = json.loads(dataset_path.read_text())
     if args.limit:
         dataset = dataset[: args.limit]
 
-    print(f"Running {len(dataset)} questions (top_k={args.top_k}, concurrency={args.concurrency})...")
+    print(f"Running {len(dataset)} questions against collection '{args.collection}' "
+          f"(top_k={args.top_k}, concurrency={args.concurrency})...")
     semaphore = asyncio.Semaphore(args.concurrency)
-    tasks = [evaluate_item(item, args.top_k, semaphore) for item in dataset]
+    tasks = [evaluate_item(item, args.top_k, args.collection, semaphore) for item in dataset]
     results = []
     for i, coro in enumerate(asyncio.as_completed(tasks), start=1):
         result = await coro
@@ -363,7 +364,7 @@ async def main_async(args: argparse.Namespace) -> None:
         print(f"  [{i}/{len(dataset)}] {result['id']} ... {status}")
 
     results.sort(key=lambda r: r["id"])
-    summary = compute_summary(results, args.run_label, args.top_k, dataset_path)
+    summary = compute_summary(results, args.run_label, args.top_k, args.collection, dataset_path)
     print_summary(summary)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -377,6 +378,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dataset", default=str(DEFAULT_DATASET), help="path to the Q&A dataset JSON")
     parser.add_argument("--top-k", type=int, default=5, help="top_k passed to rag/query_pdf_ai")
+    parser.add_argument("--collection", default="eval_docs",
+                         help="Qdrant collection to ingest into / query against, isolated from "
+                              "manual/Streamlit testing data (default: eval_docs)")
     parser.add_argument("--run-label", default="baseline", help="tag for this run, e.g. 'baseline' or 'hybrid-retrieval'")
     parser.add_argument("--limit", type=int, default=None, help="only run the first N questions (smoke test)")
     parser.add_argument("--concurrency", type=int, default=3, help="max concurrent in-flight questions")
