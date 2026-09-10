@@ -12,6 +12,7 @@ import datetime
 from app.data_loader import load_and_chunk_pdf, embed_texts
 from app.vector_db import QdrantStorage
 from app.custom_types import RAGChunkAndSrc, RAGUpsertresult, RAGSearchResult
+from app.hybrid_retrieval import hybrid_search, invalidate_bm25_cache
 
 load_dotenv() # load environment variables from .env file
 
