@@ -48,3 +48,14 @@ def _reciprocal_rank_fusion(ranked_id_lists: list[list[str]], k: int = RRF_K) ->
         for rank, doc_id in enumerate(ranked_ids, start = 1):
             fused_scores[doc_id] = fused_scores.get(doc_id, 0.0) + 1.0 / (k + rank)
     return fused_scores
+
+
+_reranker = None
+
+
+def _get_reranker():
+    global _reranker
+    if _reranker is None:
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+        _reranker = TextCrossEncoder(model_name = RERANKER_MODEL)
+    return _reranker
