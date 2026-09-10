@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.141.1",
+    "fastembed>=0.4.2",
     "inngest>=0.5.19",
     "llama-index-core>=0.14.24",
     "llama-index-readers-file>=0.6.0",
