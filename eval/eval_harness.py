@@ -285,7 +285,9 @@ async def evaluate_item(
         }
 
 
-def compute_summary(results: list[dict], run_label: str, top_k: int, collection: str, dataset_path: Path) -> dict:
+def compute_summary(
+    results: list[dict], run_label: str, top_k: int, collection: str, retrieval_mode: str, dataset_path: Path
+) -> dict:
     total = len(results)
     errored = [r for r in results if "error" in r]
     factual = [r for r in results if r["question_type"] == "factual"]
@@ -313,6 +315,7 @@ def compute_summary(results: list[dict], run_label: str, top_k: int, collection:
         "timestamp": datetime.now().isoformat(),
         "top_k": top_k,
         "collection": collection,
+        "retrieval_mode": retrieval_mode,
         "dataset_path": str(dataset_path),
         "total_questions": total,
         "factual_questions": len(factual),
@@ -337,6 +340,7 @@ def print_summary(summary: dict) -> None:
     print(f"  Eval run: {summary['run_label']}  ({summary['timestamp']})")
     print("=" * 60)
     print(f"  Collection:           {summary['collection']}")
+    print(f"  Retrieval mode:       {summary['retrieval_mode']}")
     print(f"  Questions:            {summary['total_questions']} "
           f"({summary['factual_questions']} factual, {summary['open_ended_questions']} open-ended)")
     print(f"  Errors:               {summary['errors']}")
