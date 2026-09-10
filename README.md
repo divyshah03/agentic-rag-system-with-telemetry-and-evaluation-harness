@@ -81,6 +81,8 @@ Streamlit UI (streamlit_app.py)
 | **API / workflows** | FastAPI, Inngest |
 | **Vector DB** | Qdrant |
 | **Embeddings & LLM** | OpenAI (`text-embedding-3-large`, `gpt-4o-mini`) |
+| **Keyword search** | `rank-bm25` (BM25Okapi) |
+| **Re-ranking** | `fastembed` `TextCrossEncoder` (`Xenova/ms-marco-MiniLM-L-6-v2`, ONNX, local/CPU) |
 | **PDF parsing** | LlamaIndex (`PDFReader`, `SentenceSplitter`) |
 | **UI** | Streamlit |
 | **Eval** | Custom harness (`eval/eval_harness.py`), fpdf2 for sample PDFs |
@@ -177,9 +179,14 @@ uv run python eval/eval_harness.py
 
 # Label a run after a pipeline change
 uv run python eval/eval_harness.py --run-label hybrid-retrieval
+
+# Reproduce the original dense-only baseline for comparison
+uv run python eval/eval_harness.py --retrieval-mode dense --run-label dense-baseline-repro
 ```
 
 The harness runs against its own Qdrant collection (`eval_docs` by default, override with `--collection`), separate from whatever collection (`docs` by default) you use for manual/Streamlit testing — so eval runs stay reproducible regardless of what you've uploaded for ad-hoc testing.
+
+By default the harness benchmarks the current hybrid retrieval path (`--retrieval-mode hybrid`, matching `rag_query_pdf_ai`'s own default) with no flags needed; pass `--retrieval-mode dense` to fall back to the original cosine-only path for an apples-to-apples before/after comparison.
 
 **Metrics:**
 - **Retrieval** — Recall@k, MRR (did the right source appear in top-k?)
