@@ -45,6 +45,7 @@ async def rag_ingest_pdf(ctx: inngest.Context):
         ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")) for i in range(len(chunks))]
         payloads = [{"source": source_id, "text": chunks[i]} for i in range(len(chunks))]
         QdrantStorage(collection = chunks_and_src.collection).upsert(ids, vecs, payloads)
+        invalidate_bm25_cache(chunks_and_src.collection)
         return RAGUpsertresult(ingested = len(chunks))
     
     chunks_and_src = await ctx.step.run("load-and-chunk", lambda: _load(ctx), output_type = RAGChunkAndSrc)
