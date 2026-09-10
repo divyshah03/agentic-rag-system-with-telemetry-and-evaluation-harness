@@ -11,7 +11,7 @@ import datetime
 
 from app.data_loader import load_and_chunk_pdf, embed_texts
 from app.vector_db import QdrantStorage
-from app.custom_types import RAGChunkAndSrc, RAGUpsertresult, RAGSearchResult, RAGQueryResult
+from app.custom_types import RAGChunkAndSrc, RAGUpsertresult, RAGSearchResult
 
 load_dotenv() # load environment variables from .env file
 
