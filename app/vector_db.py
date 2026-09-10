@@ -36,7 +36,7 @@ class QdrantStorage:
                   contexts.append(text)
                   sources.add(source)
                   scores.append(r.score)
-                  retrieved.append({"text": text, "source": source, "score": r.score})
+                  retrieved.append({"id": r.id, "text": text, "source": source, "score": r.score})
         return {"contexts": contexts,"sources": list(sources), "scores": scores, "retrieved": retrieved}
 
           
