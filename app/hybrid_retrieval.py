@@ -31,3 +31,20 @@ def _get_bm25_index(collection: str):
 
 def invalidate_bm25_cache(collection: str) -> None:
     _bm25_cache.pop(collection, None)
+
+
+def _bm25_candidates(collection: str, query_text: str, pool_size: int) -> list[dict]:
+    index, documents = _get_bm25_index(collection)
+    if index is None or not documents:
+        return []
+    scores = index.get_scores(_tokenize(query_text))
+    ranked = sorted(range(len(documents)), key = lambda i: scores[i], reverse = True)
+    return [documents[i] for i in ranked[:pool_size] if scores[i] > 0]
+
+
+def _reciprocal_rank_fusion(ranked_id_lists: list[list[str]], k: int = RRF_K) -> dict[str, float]:
+    fused_scores: dict[str, float] = {}
+    for ranked_ids in ranked_id_lists:
+        for rank, doc_id in enumerate(ranked_ids, start = 1):
+            fused_scores[doc_id] = fused_scores.get(doc_id, 0.0) + 1.0 / (k + rank)
+    return fused_scores
