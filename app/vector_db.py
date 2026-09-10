@@ -42,6 +42,21 @@ class QdrantStorage:
     def scroll_all(self):
         documents = []
         offset = None
+        while True:
+            points, offset = self.client.scroll(
+                collection_name = self.collection,
+                with_payload = True,
+                with_vectors = False,
+                limit = 256,
+                offset = offset
+            )
+            for p in points:
+                payload = getattr(p, "payload", None) or {}
+                text = payload.get("text", "")
+                if text:
+                    documents.append({"id": p.id, "text": text, "source": payload.get("source", "")})
+            if offset is None:
+                break
         return documents
 
           
