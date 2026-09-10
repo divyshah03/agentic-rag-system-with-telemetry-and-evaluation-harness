@@ -214,7 +214,8 @@ RAGProductionApp/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI app + Inngest ingest/query functions
 │   ├── data_loader.py          # PDF loading, chunking, OpenAI embeddings
-│   ├── vector_db.py            # Qdrant wrapper (upsert, search)
+│   ├── vector_db.py            # Qdrant wrapper (upsert, search, scroll_all)
+│   ├── hybrid_retrieval.py     # BM25 index, RRF fusion, cross-encoder re-ranking
 │   └── custom_types.py         # Pydantic models for Inngest step I/O
 ├── streamlit_app.py            # Upload + query UI
 ├── eval/
@@ -236,8 +237,9 @@ RAGProductionApp/
 | `app/main.py` | Backend entry point. Registers `rag_ingest_pdf` and `rag_query_pdf_ai` Inngest functions |
 | `streamlit_app.py` | Frontend: PDF upload, question form, Inngest event polling |
 | `app/data_loader.py` | `load_and_chunk_pdf()`, `embed_texts()` |
-| `app/vector_db.py` | `QdrantStorage` — auto-creates `docs` collection, upsert + `query_points` search |
-| `app/custom_types.py` | `RAGChunkAndSrc`, `RAGUpsertresult`, `RAGSearchResult`, `RetrievedChunk`, `RAGQueryResult` |
+| `app/vector_db.py` | `QdrantStorage` — auto-creates collection, upsert + `query_points` search + `scroll_all` |
+| `app/hybrid_retrieval.py` | `hybrid_search()` — BM25 + dense fusion (RRF) + cross-encoder re-ranking; `invalidate_bm25_cache()` |
+| `app/custom_types.py` | `RAGChunkAndSrc`, `RAGUpsertresult`, `RAGSearchResult`, `RetrievedChunk` |
 | `eval/eval_harness.py` | End-to-end eval: ingest sample PDFs, run Q&A, score retrieval + answers |
 
 ---
