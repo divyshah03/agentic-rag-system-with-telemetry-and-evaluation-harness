@@ -362,9 +362,12 @@ async def main_async(args: argparse.Namespace) -> None:
         dataset = dataset[: args.limit]
 
     print(f"Running {len(dataset)} questions against collection '{args.collection}' "
-          f"(top_k={args.top_k}, concurrency={args.concurrency})...")
+          f"(top_k={args.top_k}, retrieval_mode={args.retrieval_mode}, concurrency={args.concurrency})...")
     semaphore = asyncio.Semaphore(args.concurrency)
-    tasks = [evaluate_item(item, args.top_k, args.collection, semaphore) for item in dataset]
+    tasks = [
+        evaluate_item(item, args.top_k, args.collection, args.retrieval_mode, semaphore)
+        for item in dataset
+    ]
     results = []
     for i, coro in enumerate(asyncio.as_completed(tasks), start=1):
         result = await coro
@@ -373,7 +376,9 @@ async def main_async(args: argparse.Namespace) -> None:
         print(f"  [{i}/{len(dataset)}] {result['id']} ... {status}")
 
     results.sort(key=lambda r: r["id"])
-    summary = compute_summary(results, args.run_label, args.top_k, args.collection, dataset_path)
+    summary = compute_summary(
+        results, args.run_label, args.top_k, args.collection, args.retrieval_mode, dataset_path
+    )
     print_summary(summary)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -390,6 +395,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--collection", default="eval_docs",
                          help="Qdrant collection to ingest into / query against, isolated from "
                               "manual/Streamlit testing data (default: eval_docs)")
+    parser.add_argument("--retrieval-mode", choices=["hybrid", "dense"], default="hybrid",
+                         help="retrieval strategy passed to rag/query_pdf_ai (default: hybrid, "
+                              "matching the server default; use 'dense' to reproduce the "
+                              "original dense-only baseline)")
     parser.add_argument("--run-label", default="baseline", help="tag for this run, e.g. 'baseline' or 'hybrid-retrieval'")
     parser.add_argument("--limit", type=int, default=None, help="only run the first N questions (smoke test)")
     parser.add_argument("--concurrency", type=int, default=3, help="max concurrent in-flight questions")
