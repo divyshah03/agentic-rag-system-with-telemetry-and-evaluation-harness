@@ -56,16 +56,17 @@ async def rag_ingest_pdf(ctx: inngest.Context):
     trigger = inngest.TriggerEvent(event = "rag/query_pdf_ai")
 )
 async def rag_query_pdf_ai(ctx: inngest.Context):
-    def _search(question: str, top_k: int = 5) -> RAGSearchResult:
+    def _search(question: str, top_k: int, collection: str) -> RAGSearchResult:
         query_vec = embed_texts([question])[0]
-        store = QdrantStorage()
+        store = QdrantStorage(collection = collection)
         found = store.search(query_vec, top_k)
         return RAGSearchResult(contexts = found["contexts"], scores = found["scores"], sources = found["sources"], retrieved = found["retrieved"])
 
     question = ctx.event.data["question"]
     top_k = int(ctx.event.data.get("top_k", 5))
+    collection = ctx.event.data.get("collection", "docs")
 
-    found = await ctx.step.run("embed-and-search", lambda: _search(question, top_k), output_type = RAGSearchResult)
+    found = await ctx.step.run("embed-and-search", lambda: _search(question, top_k, collection), output_type = RAGSearchResult)
 
     context_block = "\n\n".join(f"- {c}" for c in found.contexts)
     user_context = (
