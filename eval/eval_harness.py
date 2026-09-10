@@ -240,7 +240,9 @@ def retrieval_metrics(source_pdf: str, retrieved_chunks: list[dict]) -> dict:
     }
 
 
-async def evaluate_item(item: dict, top_k: int, collection: str, semaphore: asyncio.Semaphore) -> dict:
+async def evaluate_item(
+    item: dict, top_k: int, collection: str, retrieval_mode: str, semaphore: asyncio.Semaphore
+) -> dict:
     async with semaphore:
         base = {
             "id": item["id"],
@@ -250,7 +252,7 @@ async def evaluate_item(item: dict, top_k: int, collection: str, semaphore: asyn
             "expected_answer": item["expected_answer"],
         }
         try:
-            output = await run_query(item["question"], top_k, collection)
+            output = await run_query(item["question"], top_k, collection, retrieval_mode)
         except Exception as e:
             return {**base, "error": str(e), "scoring": {"passed": False}}
 
