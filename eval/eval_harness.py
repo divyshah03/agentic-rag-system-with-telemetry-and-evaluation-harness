@@ -119,9 +119,12 @@ async def wait_for_run_output(
         await asyncio.sleep(poll_interval_s)
 
 
-async def run_query(question: str, top_k: int, collection: str, timeout_s: float = 120.0) -> dict:
+async def run_query(
+    question: str, top_k: int, collection: str, retrieval_mode: str, timeout_s: float = 120.0
+) -> dict:
     event_id = await send_event(
-        "rag/query_pdf_ai", {"question": question, "top_k": top_k, "collection": collection}
+        "rag/query_pdf_ai",
+        {"question": question, "top_k": top_k, "collection": collection, "retrieval_mode": retrieval_mode},
     )
     return await wait_for_run_output(event_id, timeout_s=timeout_s)
 
