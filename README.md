@@ -63,7 +63,9 @@ Streamlit UI (streamlit_app.py)
 ### Query flow
 
 1. Question embedded with the same model
-2. Qdrant `query_points` returns top-k chunks with cosine similarity scores
+2. Retrieval (`retrieval_mode`, default `hybrid`):
+   - `hybrid` — dense Qdrant search + BM25 keyword search over the collection, fused by Reciprocal Rank Fusion, then re-ranked by a local cross-encoder; final `retrieved_chunks[i].score` is the cross-encoder relevance score
+   - `dense` — the original cosine-similarity-only path, for reproducing pre-hybrid baseline numbers
 3. Chunks formatted into a prompt
 4. `gpt-4o-mini` generates an answer from context only
 5. Response: `answer`, `sources`, `num_contexts`, `retrieved_chunks`
