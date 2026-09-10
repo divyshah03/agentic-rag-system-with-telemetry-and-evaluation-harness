@@ -59,3 +59,34 @@ def _get_reranker():
         from fastembed.rerank.cross_encoder import TextCrossEncoder
         _reranker = TextCrossEncoder(model_name = RERANKER_MODEL)
     return _reranker
+
+
+def hybrid_search(collection: str, query_vector: list[float], query_text: str, top_k: int, candidate_pool: int = DEFAULT_CANDIDATE_POOL) -> dict:
+    pool_size = max(candidate_pool, top_k)
+
+    dense = QdrantStorage(collection = collection).search(query_vector, pool_size)["retrieved"]
+    bm25 = _bm25_candidates(collection, query_text, pool_size)
+
+    by_id = {doc["id"]: doc for doc in bm25}
+    by_id.update({doc["id"]: doc for doc in dense})
+
+    fused_scores = _reciprocal_rank_fusion([
+        [doc["id"] for doc in dense],
+        [doc["id"] for doc in bm25],
+    ])
+    fused_ids = sorted(fused_scores, key = lambda doc_id: fused_scores[doc_id], reverse = True)
+    candidates = [by_id[doc_id] for doc_id in fused_ids[:pool_size]]
+
+    if not candidates:
+        return {"contexts": [], "sources": [], "scores": [], "retrieved": []}
+
+    reranker = _get_reranker()
+    rerank_scores = list(reranker.rerank(query_text, [c["text"] for c in candidates]))
+    ranked = sorted(zip(candidates, rerank_scores), key = lambda pair: pair[1], reverse = True)[:top_k]
+
+    return {
+        "contexts": [c["text"] for c, _ in ranked],
+        "sources": list({c["source"] for c, _ in ranked}),
+        "scores": [float(score) for _, score in ranked],
+        "retrieved": [{"text": c["text"], "source": c["source"], "score": float(score)} for c, score in ranked],
+    }
