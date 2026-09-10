@@ -4,6 +4,7 @@ import pydantic
 class RAGChunkAndSrc(pydantic.BaseModel):
     chunks: list[str]
     source_id: str = None
+    collection: str = "docs"
 
 class RAGUpsertresult(pydantic.BaseModel):
     ingested: int
