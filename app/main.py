@@ -33,8 +33,9 @@ async def rag_ingest_pdf(ctx: inngest.Context):
     def _load(ctx: inngest.Context) -> RAGChunkAndSrc:
         pdf_path = ctx.event.data["pdf_path"]
         source_id = ctx.event.data.get("source_id", pdf_path)
+        collection = ctx.event.data.get("collection", "docs")
         chunks = load_and_chunk_pdf(pdf_path)
-        return RAGChunkAndSrc(chunks = chunks, source_id = source_id)
+        return RAGChunkAndSrc(chunks = chunks, source_id = source_id, collection = collection)
 
     def _upsert(chunks_and_src: RAGChunkAndSrc) -> RAGUpsertresult:
         chunks = chunks_and_src.chunks
@@ -42,7 +43,7 @@ async def rag_ingest_pdf(ctx: inngest.Context):
         vecs = embed_texts(chunks)
         ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")) for i in range(len(chunks))]
         payloads = [{"source": source_id, "text": chunks[i]} for i in range(len(chunks))]
-        QdrantStorage().upsert(ids, vecs, payloads)
+        QdrantStorage(collection = chunks_and_src.collection).upsert(ids, vecs, payloads)
         return RAGUpsertresult(ingested = len(chunks))
     
     chunks_and_src = await ctx.step.run("load-and-chunk", lambda: _load(ctx), output_type = RAGChunkAndSrc)
