@@ -119,14 +119,16 @@ async def wait_for_run_output(
         await asyncio.sleep(poll_interval_s)
 
 
-async def run_query(question: str, top_k: int, timeout_s: float = 120.0) -> dict:
-    event_id = await send_event("rag/query_pdf_ai", {"question": question, "top_k": top_k})
+async def run_query(question: str, top_k: int, collection: str, timeout_s: float = 120.0) -> dict:
+    event_id = await send_event(
+        "rag/query_pdf_ai", {"question": question, "top_k": top_k, "collection": collection}
+    )
     return await wait_for_run_output(event_id, timeout_s=timeout_s)
 
 
-async def run_ingest(pdf_path: str, source_id: str, timeout_s: float = 180.0) -> dict:
+async def run_ingest(pdf_path: str, source_id: str, collection: str, timeout_s: float = 180.0) -> dict:
     event_id = await send_event(
-        "rag/ingest_pdf", {"pdf_path": pdf_path, "source_id": source_id}
+        "rag/ingest_pdf", {"pdf_path": pdf_path, "source_id": source_id, "collection": collection}
     )
     return await wait_for_run_output(event_id, timeout_s=timeout_s)
 
