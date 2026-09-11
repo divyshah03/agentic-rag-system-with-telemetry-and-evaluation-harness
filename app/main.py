@@ -75,8 +75,9 @@ async def rag_query_pdf_ai(ctx: inngest.Context):
     top_k = int(ctx.event.data.get("top_k", 5))
     collection = ctx.event.data.get("collection", "docs")
     retrieval_mode = ctx.event.data.get("retrieval_mode", "hybrid")
+    enable_routing = bool(ctx.event.data.get("enable_routing", True))
 
-    found = await ctx.step.run("embed-and-search", lambda: _search(question, top_k, collection, retrieval_mode), output_type = RAGSearchResult)
+    found = await ctx.step.run("embed-and-search", lambda: _search(question, top_k, collection, retrieval_mode, enable_routing), output_type = RAGSearchResult)
 
     context_block = "\n\n".join(f"- {c}" for c in found.contexts)
     user_context = (
