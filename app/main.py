@@ -131,7 +131,17 @@ async def upload_pdf(file: UploadFile):
     uploads_dir.mkdir(parents = True, exist_ok = True)
     dest = uploads_dir / file.filename
     dest.write_bytes(await file.read())
-    return {"path": str(dest.resolve()), "source_id": file.filename}
+
+    ids = await inngest_client.send(
+        inngest.Event(
+            name = "rag/ingest_pdf",
+            data = {
+                "pdf_path": str(dest.resolve()),
+                "source_id": file.filename,
+            },
+        )
+    )
+    return {"event_id": ids[0]}
 
 
 inngest.fast_api.serve(app,inngest_client,[rag_ingest_pdf, rag_query_pdf_ai])
