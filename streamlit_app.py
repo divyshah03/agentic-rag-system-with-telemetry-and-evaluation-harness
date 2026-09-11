@@ -12,10 +12,16 @@ load_dotenv()
 
 st.set_page_config(page_title = "RAG Ingest PDF", page_icon = "📄", layout = "centered")
 
+BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+DEMO_PDF_PATH = Path(__file__).parent / "eval" / "pdfs" / "employee_handbook.pdf"
+
 
 @st.cache_resource
 def get_inngest_client() -> inngest.Inngest:
-    return inngest.Inngest(app_id = "rag_app", is_production = False)
+    # Falls back to the INNGEST_DEV env var: set INNGEST_DEV=1 locally, leave
+    # unset when deployed so the SDK sends events to Inngest Cloud instead of
+    # a local dev server.
+    return inngest.Inngest(app_id = "rag_app")
 
 
 def save_uploaded_pdf(file) -> Path:
@@ -41,6 +47,10 @@ async def send_rag_ingest_event(pdf_path: Path) -> None:
 
 
 st.title("Upload a PDF to Ingest")
+st.caption(
+    "First request after a period of inactivity can take up to a minute "
+    "while the backend wakes up from its free-tier sleep."
+)
 uploaded = st.file_uploader("Choose a PDF", type = ["pdf"], accept_multiple_files = False)
 
 if uploaded is not None:
