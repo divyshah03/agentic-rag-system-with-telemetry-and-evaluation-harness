@@ -1,5 +1,7 @@
 import logging
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, UploadFile
 import inngest
 import inngest.fast_api
 from inngest.experimental import ai
@@ -119,6 +121,17 @@ async def rag_query_pdf_ai(ctx: inngest.Context):
 
     
 app = FastAPI()
+
+
+@app.post("/uploads")
+async def upload_pdf(file: UploadFile):
+    # Saved and read back on this same backend instance so ingestion never
+    # depends on a filesystem shared with the (separately hosted) frontend.
+    uploads_dir = Path("uploads")
+    uploads_dir.mkdir(parents = True, exist_ok = True)
+    dest = uploads_dir / file.filename
+    dest.write_bytes(await file.read())
+    return {"path": str(dest.resolve()), "source_id": file.filename}
 
 
 inngest.fast_api.serve(app,inngest_client,[rag_ingest_pdf, rag_query_pdf_ai])
