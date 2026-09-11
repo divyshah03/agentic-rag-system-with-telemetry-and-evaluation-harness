@@ -20,8 +20,10 @@ load_dotenv() # load environment variables from .env file
 inngest_client = inngest.Inngest(
     app_id = "rag_app",
     logger = logging.getLogger("uvicorn"),
-    is_production = False,
-    serializer = inngest.PydanticSerializer() # defines the types of different variable 
+    # Falls back to the INNGEST_DEV env var: set INNGEST_DEV=1 locally, leave
+    # unset in hosted environments so the SDK runs in production mode once
+    # INNGEST_SIGNING_KEY/INNGEST_EVENT_KEY are present.
+    serializer = inngest.PydanticSerializer() # defines the types of different variable
 )
 
 @inngest_client.create_function(
