@@ -73,6 +73,41 @@ Streamlit UI (streamlit_app.py)
 
 ---
 
+## 🧭 Agentic Query Routing
+
+When hybrid retrieval's top result doesn't look trustworthy, the query is automatically
+re-retrieved with a wider candidate pool before answering, instead of confidently answering from
+whatever came back.
+
+**Confidence signal:** the cross-encoder's top-1 relevance score, thresholded at `0` — the
+reranker's own trained relevant/irrelevant decision boundary (MS MARCO cross-encoders are trained
+as a binary classifier around that boundary). This is deliberately *not* fit to this project's
+eval labels: with only one failure in the 80-question eval set, no threshold could be validated
+against pass/fail outcomes without overfitting to a sample size of one. Real trigger rate on the
+eval set: 11/80 (13.75%).
+
+**Re-retrieval strategy:** on low confidence, re-run hybrid search once with a much larger
+candidate pool (20 → 60) and re-rank. Chosen over a dense-only fallback because it directly
+answers what the trigger condition says ("of the candidates we gave the reranker, none looked
+good") — no retry loop; if the widened pass is still low-confidence, that result is returned as-is.
+
+**Known limitation, found and kept rather than hidden:** this signal does *not* catch every retrieval
+failure. Investigating `pr_018` (an open-ended eval question) after the hybrid-retrieval rollout
+showed the failure mode was a confident-but-incomplete retrieval — the top chunk scored +1.61
+(clearly "relevant" by the same threshold) while a second necessary chunk, orphaned from its
+section header by chunking, scored −11.3 (indistinguishable from actual noise) and never
+resurfaced. No signal computed from final top-k scores can detect evidence that was already
+discarded before scoring — that's a chunking/coverage problem, not something a confidence gate on
+retrieval output can fix. Routing here targets the more common, structurally different "nothing
+retrieved looked relevant at all" failure instead.
+
+`enable_routing` (default `true`) toggles this per-query; `eval_harness.py` exposes it as
+`--enable-routing` / `--no-enable-routing` for routing-on vs. routing-off comparison runs, and
+records `routing.triggered`/`routing.initial_confidence`/`routing.final_confidence` per question
+in the results JSON plus a `routing_trigger_rate` in the run summary.
+
+---
+
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
