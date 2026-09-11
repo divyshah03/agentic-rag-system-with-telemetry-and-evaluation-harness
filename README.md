@@ -33,10 +33,13 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 ```
 Streamlit UI (streamlit_app.py)
     │
-    ├─ Upload PDF ──► save to uploads/ ──► Inngest event: rag/ingest_pdf
+    ├─ Upload PDF ──► POST {BACKEND_URL}/uploads ──► saved to backend's uploads/
+    │                                                        │
+    │                                                        ▼
+    │                                    FastAPI + Inngest (app/main.py)
+    │                                    sends Inngest event: rag/ingest_pdf
     │                                              │
     │                                              ▼
-    │                                    FastAPI + Inngest (app/main.py)
     │                                    rag_ingest_pdf:
     │                                      1. load-and-chunk   (app/data_loader)
     │                                      2. embed-and-upsert (app/data_loader + app/vector_db)
@@ -52,13 +55,17 @@ Streamlit UI (streamlit_app.py)
                          Streamlit polls Inngest API for run output
 ```
 
+The upload goes through the backend (rather than Streamlit sending the Inngest
+event directly with a local file path) so ingestion works when Streamlit and
+the backend are deployed on separate hosts — see [Deployment](#-deployment).
+
 ### Ingest flow
 
-1. PDF saved locally under `uploads/`
+1. PDF uploaded via `POST /uploads` and saved under `uploads/` on the backend
 2. `PDFReader` (LlamaIndex) extracts text — one `Document` per PDF page. All pages are joined into a single document-level string *before* splitting, so `SentenceSplitter` (1000 tokens, 200 token overlap) can chunk across what used to be a hard page boundary. (Joining first matters: chunking per page independently means overlap can never bridge a page break, and short pages may never even reach the chunk-size threshold at all — see AGENTS.md.)
 3. OpenAI `text-embedding-3-large` embeds each chunk
 4. Deterministic UUID per chunk (`source_id` + index); payload `{source, text}`
-5. Vectors upserted into Qdrant collection `docs` on `localhost:6333`
+5. Vectors upserted into the Qdrant collection `docs` at `QDRANT_URL` (`localhost:6333` by default, a Qdrant Cloud cluster in production)
 
 ### Query flow
 
