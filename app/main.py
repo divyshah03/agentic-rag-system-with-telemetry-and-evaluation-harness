@@ -111,6 +111,7 @@ async def rag_query_pdf_ai(ctx: inngest.Context):
         "sources": found.sources,
         "num_contexts": len(found.contexts),
         "retrieved_chunks": [c.model_dump() for c in found.retrieved],
+        "routing": found.routing,
     }
 
 
