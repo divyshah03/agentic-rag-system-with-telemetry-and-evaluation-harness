@@ -361,6 +361,39 @@ You can shut down Qdrant and FastAPI while keeping Inngest running — it will j
 
 ---
 
+## 🚀 Deployment
+
+Each local piece maps to a hosted equivalent:
+
+| Local | Hosted |
+|-------|--------|
+| Qdrant (Docker) | [Qdrant Cloud](https://cloud.qdrant.io) free cluster |
+| `inngest dev` | [Inngest Cloud](https://www.inngest.com) free tier |
+| `uvicorn app.main:app` | [Render](https://render.com) free Web Service |
+| `streamlit run streamlit_app.py` | [Streamlit Community Cloud](https://streamlit.io/cloud) |
+
+**Render (backend) setup:**
+- Build command: `pip install uv && uv sync --frozen --no-dev`
+- Start command: `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Set `PYTHON_VERSION=3.13` (or the equivalent runtime setting) — this project requires Python ≥3.13
+- Env vars: `OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`
+
+**Inngest Cloud setup:** create an app, copy its Event Key and Signing Key. Once
+the backend is deployed, sync the app against `https://<your-render-app>.onrender.com/api/inngest`
+(the default path `inngest.fast_api.serve()` mounts — no path configuration needed).
+
+**Streamlit Community Cloud setup:** deploy `streamlit_app.py` from this repo,
+then set `BACKEND_URL`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, and
+`INNGEST_API_BASE=https://api.inngest.com/v1` in the app's **Secrets** panel.
+`OPENAI_API_KEY` is not needed here — only the backend calls OpenAI.
+
+**Free-tier cold starts:** Render's free Web Service sleeps after 15 minutes
+idle; the first request afterward can take 30-60s to wake up. The UI shows a
+caption warning about this rather than paying for an always-on instance or
+running a keep-alive job — proportionate for a demo link.
+
+---
+
 ## 🔒 What stays local (not on GitHub)
 
 | Path | Why |
