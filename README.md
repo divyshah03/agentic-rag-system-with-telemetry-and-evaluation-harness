@@ -159,17 +159,20 @@ uv sync
 
 ### 2. Configure environment
 
-Create a `.env` file in the project root:
+Copy `.env.example` to `.env` and fill in your OpenAI key:
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 OPENAI_API_KEY=sk-your-key-here
+INNGEST_DEV=1   # targets `inngest dev` instead of Inngest Cloud
 ```
 
-Optional:
-
-```bash
-INNGEST_API_BASE=http://127.0.0.1:8288/v1   # default; used by Streamlit polling
-```
+The other vars in `.env.example` (`QDRANT_URL`, `QDRANT_API_KEY`, `INNGEST_EVENT_KEY`,
+`INNGEST_SIGNING_KEY`, `BACKEND_URL`) are only needed for the hosted setup — see
+[Deployment](#-deployment) and [Environment Variables](#️-environment-variables).
 
 ### 3. Start Qdrant (Docker)
 
