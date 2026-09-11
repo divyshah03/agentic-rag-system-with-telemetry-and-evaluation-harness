@@ -84,7 +84,14 @@ def _inngest_api_base() -> str:
 
 def fetch_runs(event_id: str) -> list[dict]:
     url = f"{_inngest_api_base()}/events/{event_id}/runs"
-    resp = requests.get(url)
+    headers = {}
+    signing_key = os.getenv("INNGEST_SIGNING_KEY")
+    # The local dev server's REST API is unauthenticated; Inngest Cloud's isn't.
+    # NOTE: verify this is the auth scheme Inngest Cloud's dashboard docs
+    # describe for this endpoint before relying on it in production.
+    if signing_key and "127.0.0.1" not in url and "localhost" not in url:
+        headers["Authorization"] = f"Bearer {signing_key}"
+    resp = requests.get(url, headers = headers)
     resp.raise_for_status()
     data = resp.json()
     return data.get("data", [])
