@@ -59,13 +59,17 @@ async def rag_ingest_pdf(ctx: inngest.Context):
     trigger = inngest.TriggerEvent(event = "rag/query_pdf_ai")
 )
 async def rag_query_pdf_ai(ctx: inngest.Context):
-    def _search(question: str, top_k: int, collection: str, retrieval_mode: str) -> RAGSearchResult:
+    def _search(question: str, top_k: int, collection: str, retrieval_mode: str, enable_routing: bool) -> RAGSearchResult:
         query_vec = embed_texts([question])[0]
         if retrieval_mode == "dense":
             found = QdrantStorage(collection = collection).search(query_vec, top_k)
+            found["routing"] = {"triggered": False, "strategy": None}
+        elif enable_routing:
+            found = route_query(collection, query_vec, question, top_k)
         else:
             found = hybrid_search(collection, query_vec, question, top_k)
-        return RAGSearchResult(contexts = found["contexts"], scores = found["scores"], sources = found["sources"], retrieved = found["retrieved"])
+            found["routing"] = {"triggered": False, "strategy": None}
+        return RAGSearchResult(contexts = found["contexts"], scores = found["scores"], sources = found["sources"], retrieved = found["retrieved"], routing = found["routing"])
 
     question = ctx.event.data["question"]
     top_k = int(ctx.event.data.get("top_k", 5))
