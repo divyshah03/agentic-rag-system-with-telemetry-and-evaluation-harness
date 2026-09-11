@@ -24,26 +24,16 @@ def get_inngest_client() -> inngest.Inngest:
     return inngest.Inngest(app_id = "rag_app")
 
 
-def save_uploaded_pdf(file) -> Path:
-    uploads_dir = Path("uploads")
-    uploads_dir.mkdir(parents = True, exist_ok = True)
-    file_path = uploads_dir / file.name
-    file_bytes = file.getbuffer()
-    file_path.write_bytes(file_bytes)
-    return file_path
-
-
-async def send_rag_ingest_event(pdf_path: Path) -> None:
-    client = get_inngest_client()
-    await client.send(
-        inngest.Event(
-            name = "rag/ingest_pdf",
-            data={
-                "pdf_path": str(pdf_path.resolve()),
-                "source_id": pdf_path.name,
-            },
-        )
+def trigger_ingest(filename: str, file_bytes: bytes) -> None:
+    # Uploaded through the backend (not saved locally) since Streamlit and the
+    # backend run on separate hosts once deployed — only the backend's own
+    # filesystem is guaranteed to be readable by the ingest step that follows.
+    resp = requests.post(
+        f"{BACKEND_URL}/uploads",
+        files = {"file": (filename, file_bytes, "application/pdf")},
+        timeout = 60,
     )
+    resp.raise_for_status()
 
 
 st.title("Upload a PDF to Ingest")
@@ -55,12 +45,10 @@ uploaded = st.file_uploader("Choose a PDF", type = ["pdf"], accept_multiple_file
 
 if uploaded is not None:
     with st.spinner("Uploading and triggering ingestion..."):
-        path = save_uploaded_pdf(uploaded)
-        # Kick off the event and block until the send completes
-        asyncio.run(send_rag_ingest_event(path))
+        trigger_ingest(uploaded.name, uploaded.getvalue())
         # Small pause for user feedback continuity
         time.sleep(0.3)
-    st.success(f"Triggered ingestion for: {path.name}")
+    st.success(f"Triggered ingestion for: {uploaded.name}")
     st.caption("You can upload another PDF if you like.")
 
 st.divider()
