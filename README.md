@@ -13,6 +13,7 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 - **📥 PDF ingestion** — Upload PDFs; they are chunked, embedded, and stored in Qdrant
 - **🔍 Hybrid retrieval** — BM25 keyword search + dense cosine search over OpenAI embeddings (`text-embedding-3-large`, 3072-dim), fused with Reciprocal Rank Fusion
 - **🎯 Cross-encoder re-ranking** — The fused candidate pool is re-scored with a local ONNX cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2` via `fastembed`) before the final top-k is picked; toggle back to dense-only retrieval per-query via `retrieval_mode`
+- **🧭 Agentic query routing** — When the top retrieved chunk's cross-encoder score falls below its own relevant/irrelevant boundary (< 0), the query is automatically re-retrieved with a much wider candidate pool before answering; toggle with `enable_routing`
 - **🤖 LLM answers** — `gpt-4o-mini` answers from retrieved context only
 - **⚡ Durable workflows** — Inngest orchestrates ingest and query as step-based functions (retries, observability, execution traces)
 - **🖥️ Streamlit UI** — Upload documents and ask questions in the browser
