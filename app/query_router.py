@@ -12,4 +12,8 @@ def route_query(collection: str, query_vector: list[float], query_text: str, top
     result = hybrid_search(collection, query_vector, query_text, top_k, candidate_pool)
     initial_confidence = _top1_confidence(result["retrieved"])
     triggered = initial_confidence < CONFIDENCE_THRESHOLD
+
+    if triggered:
+        result = hybrid_search(collection, query_vector, query_text, top_k, candidate_pool = WIDENED_CANDIDATE_POOL)
+
     return result
