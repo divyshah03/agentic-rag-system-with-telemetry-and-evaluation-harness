@@ -41,7 +41,14 @@ st.caption(
     "First request after a period of inactivity can take up to a minute "
     "while the backend wakes up from its free-tier sleep."
 )
-uploaded = st.file_uploader("Choose a PDF", type = ["pdf"], accept_multiple_files = False)
+
+if st.button("Load demo document (employee handbook)"):
+    with st.spinner("Uploading and triggering ingestion..."):
+        trigger_ingest(DEMO_PDF_PATH.name, DEMO_PDF_PATH.read_bytes())
+        time.sleep(0.3)
+    st.success(f"Triggered ingestion for: {DEMO_PDF_PATH.name}")
+
+uploaded = st.file_uploader("Or choose your own PDF", type = ["pdf"], accept_multiple_files = False)
 
 if uploaded is not None:
     with st.spinner("Uploading and triggering ingestion..."):
