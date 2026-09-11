@@ -120,11 +120,22 @@ async def wait_for_run_output(
 
 
 async def run_query(
-    question: str, top_k: int, collection: str, retrieval_mode: str, timeout_s: float = 120.0
+    question: str,
+    top_k: int,
+    collection: str,
+    retrieval_mode: str,
+    enable_routing: bool,
+    timeout_s: float = 120.0,
 ) -> dict:
     event_id = await send_event(
         "rag/query_pdf_ai",
-        {"question": question, "top_k": top_k, "collection": collection, "retrieval_mode": retrieval_mode},
+        {
+            "question": question,
+            "top_k": top_k,
+            "collection": collection,
+            "retrieval_mode": retrieval_mode,
+            "enable_routing": enable_routing,
+        },
     )
     return await wait_for_run_output(event_id, timeout_s=timeout_s)
 
