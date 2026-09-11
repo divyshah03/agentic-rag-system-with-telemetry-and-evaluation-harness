@@ -2,7 +2,7 @@
 
 ## Project layout
 
-- `app/` — importable application package: `main.py` (FastAPI + Inngest functions), `data_loader.py`, `vector_db.py`, `custom_types.py`. Import these as `from app.vector_db import QdrantStorage`.
+- `app/` — importable application package: `main.py` (FastAPI + Inngest functions), `data_loader.py`, `vector_db.py`, `hybrid_retrieval.py`, `query_router.py`, `custom_types.py`. Import these as `from app.vector_db import QdrantStorage`.
 - `streamlit_app.py` — Streamlit UI at the repo root. Sends Inngest events and polls for run output; it does not import `app/`.
 - `eval/` — evaluation harness, ground-truth dataset, and sample PDFs. Drives the pipeline only through Inngest events, so it needs no changes when retrieval internals change.
 
