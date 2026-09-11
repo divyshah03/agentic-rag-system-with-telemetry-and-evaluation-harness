@@ -218,6 +218,9 @@ uv run python eval/eval_harness.py --run-label hybrid-retrieval
 
 # Reproduce the original dense-only baseline for comparison
 uv run python eval/eval_harness.py --retrieval-mode dense --run-label dense-baseline-repro
+
+# Compare routing on vs. off (routing is on by default)
+uv run python eval/eval_harness.py --no-enable-routing --run-label routing-off
 ```
 
 The harness runs against its own Qdrant collection (`eval_docs` by default, override with `--collection`), separate from whatever collection (`docs` by default) you use for manual/Streamlit testing — so eval runs stay reproducible regardless of what you've uploaded for ad-hoc testing.
@@ -252,6 +255,7 @@ RAGProductionApp/
 │   ├── data_loader.py          # PDF loading, chunking, OpenAI embeddings
 │   ├── vector_db.py            # Qdrant wrapper (upsert, search, scroll_all)
 │   ├── hybrid_retrieval.py     # BM25 index, RRF fusion, cross-encoder re-ranking
+│   ├── query_router.py         # Confidence gate + widened-pool re-retrieval
 │   └── custom_types.py         # Pydantic models for Inngest step I/O
 ├── streamlit_app.py            # Upload + query UI
 ├── eval/
@@ -275,6 +279,7 @@ RAGProductionApp/
 | `app/data_loader.py` | `load_and_chunk_pdf()`, `embed_texts()` |
 | `app/vector_db.py` | `QdrantStorage` — auto-creates collection, upsert + `query_points` search + `scroll_all` |
 | `app/hybrid_retrieval.py` | `hybrid_search()` — BM25 + dense fusion (RRF) + cross-encoder re-ranking; `invalidate_bm25_cache()` |
+| `app/query_router.py` | `route_query()` — confidence gate on `hybrid_search()`'s top-1 score, re-retrieves with a wider pool on low confidence |
 | `app/custom_types.py` | `RAGChunkAndSrc`, `RAGUpsertresult`, `RAGSearchResult`, `RetrievedChunk` |
 | `eval/eval_harness.py` | End-to-end eval: ingest sample PDFs, run Q&A, score retrieval + answers |
 
