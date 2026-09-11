@@ -19,3 +19,4 @@ class RAGSearchResult(pydantic.BaseModel):
     sources: list[str]
     scores: list[float]
     retrieved: list[RetrievedChunk] = []
+    routing: dict = {}
