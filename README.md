@@ -320,10 +320,20 @@ RAGProductionApp/
 
 ## ⚙️ Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | ✅ | — | Embeddings and LLM generation |
-| `INNGEST_API_BASE` | ❌ | `http://127.0.0.1:8288/v1` | Inngest REST API for Streamlit/eval polling |
+Copy `.env.example` to `.env` and fill in real values for local dev. In hosted
+environments these are set on each platform's dashboard instead — see
+[Deployment](#-deployment) for exactly which var goes where.
+
+| Variable | Where it's used | Required | Default | Description |
+|----------|------------------|----------|---------|-------------|
+| `OPENAI_API_KEY` | Backend | ✅ | — | Embeddings and LLM generation |
+| `INNGEST_DEV` | Backend, Streamlit, eval | ❌ | unset | Set to `1` locally to target `inngest dev` instead of Inngest Cloud |
+| `QDRANT_URL` | Backend | ❌ | `http://localhost:6333` | Qdrant instance to connect to (Qdrant Cloud cluster URL when deployed) |
+| `QDRANT_API_KEY` | Backend | ❌ (✅ for Qdrant Cloud) | — | API key for Qdrant Cloud |
+| `INNGEST_EVENT_KEY` | Backend, Streamlit, eval | ❌ (✅ for Inngest Cloud) | — | Authenticates sending events to Inngest Cloud |
+| `INNGEST_SIGNING_KEY` | Backend, Streamlit | ❌ (✅ for Inngest Cloud) | — | Verifies Inngest Cloud's webhook calls to the backend; also used as the bearer token when polling the hosted run-status API |
+| `INNGEST_API_BASE` | Streamlit, eval | ❌ | `http://127.0.0.1:8288/v1` | Inngest REST API base for run-status polling (`https://api.inngest.com/v1` in production) |
+| `BACKEND_URL` | Streamlit | ❌ | `http://127.0.0.1:8000` | Public URL of the deployed FastAPI backend |
 
 ---
 
