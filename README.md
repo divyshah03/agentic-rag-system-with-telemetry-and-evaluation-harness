@@ -56,7 +56,7 @@ Streamlit UI (streamlit_app.py)
 ### Ingest flow
 
 1. PDF saved locally under `uploads/`
-2. `PDFReader` (LlamaIndex) extracts text; `SentenceSplitter` chunks it (~1000 chars, 200 overlap)
+2. `PDFReader` (LlamaIndex) extracts text — one `Document` per PDF page. All pages are joined into a single document-level string *before* splitting, so `SentenceSplitter` (1000 tokens, 200 token overlap) can chunk across what used to be a hard page boundary. (Joining first matters: chunking per page independently means overlap can never bridge a page break, and short pages may never even reach the chunk-size threshold at all — see AGENTS.md.)
 3. OpenAI `text-embedding-3-large` embeds each chunk
 4. Deterministic UUID per chunk (`source_id` + index); payload `{source, text}`
 5. Vectors upserted into Qdrant collection `docs` on `localhost:6333`
@@ -95,11 +95,17 @@ good") — no retry loop; if the widened pass is still low-confidence, that resu
 failure. Investigating `pr_018` (an open-ended eval question) after the hybrid-retrieval rollout
 showed the failure mode was a confident-but-incomplete retrieval — the top chunk scored +1.61
 (clearly "relevant" by the same threshold) while a second necessary chunk, orphaned from its
-section header by chunking, scored −11.3 (indistinguishable from actual noise) and never
-resurfaced. No signal computed from final top-k scores can detect evidence that was already
-discarded before scoring — that's a chunking/coverage problem, not something a confidence gate on
-retrieval output can fix. Routing here targets the more common, structurally different "nothing
-retrieved looked relevant at all" failure instead.
+section header by a PDF-page-boundary chunking bug, scored −11.3 (indistinguishable from actual
+noise) and never resurfaced. No signal computed from final top-k scores can detect evidence that
+was already discarded before scoring — that's a chunking/coverage problem, not something a
+confidence gate on retrieval output can fix. Routing targets the more common, structurally
+different "nothing retrieved looked relevant at all" failure instead.
+
+*Update:* the chunking bug behind `pr_018` (per-page-independent chunking, see AGENTS.md) has since
+been fixed — `pr_018` now passes, and passes confidently enough that routing doesn't even need to
+fire for it. The general point stands as an architectural limitation of any post-hoc,
+final-top-k confidence signal, even though this specific instance is resolved: routing is a
+safety net for "nothing looked relevant," not a substitute for correct chunking.
 
 `enable_routing` (default `true`) toggles this per-query; `eval_harness.py` exposes it as
 `--enable-routing` / `--no-enable-routing` for routing-on vs. routing-off comparison runs, and
