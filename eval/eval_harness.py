@@ -303,7 +303,13 @@ async def evaluate_item(
 
 
 def compute_summary(
-    results: list[dict], run_label: str, top_k: int, collection: str, retrieval_mode: str, dataset_path: Path
+    results: list[dict],
+    run_label: str,
+    top_k: int,
+    collection: str,
+    retrieval_mode: str,
+    enable_routing: bool,
+    dataset_path: Path,
 ) -> dict:
     total = len(results)
     errored = [r for r in results if "error" in r]
@@ -326,6 +332,10 @@ def compute_summary(
     retrieval_hit_rate = (
         mean(1.0 if r["retrieval"]["source_in_topk"] else 0.0 for r in scored) if scored else None
     )
+    routed = [r for r in scored if r.get("routing")]
+    routing_trigger_rate = (
+        mean(1.0 if r["routing"]["triggered"] else 0.0 for r in routed) if routed else None
+    )
 
     return {
         "run_label": run_label,
@@ -333,6 +343,7 @@ def compute_summary(
         "top_k": top_k,
         "collection": collection,
         "retrieval_mode": retrieval_mode,
+        "enable_routing": enable_routing,
         "dataset_path": str(dataset_path),
         "total_questions": total,
         "factual_questions": len(factual),
@@ -343,6 +354,7 @@ def compute_summary(
         "avg_judge_score": avg_judge_score,
         "overall_pass_rate": overall_pass_rate,
         "retrieval_hit_rate": retrieval_hit_rate,
+        "routing_trigger_rate": routing_trigger_rate,
     }
 
 
@@ -358,6 +370,7 @@ def print_summary(summary: dict) -> None:
     print("=" * 60)
     print(f"  Collection:           {summary['collection']}")
     print(f"  Retrieval mode:       {summary['retrieval_mode']}")
+    print(f"  Routing enabled:      {summary['enable_routing']}")
     print(f"  Questions:            {summary['total_questions']} "
           f"({summary['factual_questions']} factual, {summary['open_ended_questions']} open-ended)")
     print(f"  Errors:               {summary['errors']}")
@@ -366,6 +379,7 @@ def print_summary(summary: dict) -> None:
     print(f"  Avg judge score:      {fmt_num(summary['avg_judge_score'])} / 5")
     print(f"  Overall pass rate:    {fmt_pct(summary['overall_pass_rate'])}")
     print(f"  Retrieval hit-rate:   {fmt_pct(summary['retrieval_hit_rate'])}  (correct source in top-k)")
+    print(f"  Routing trigger rate: {fmt_pct(summary['routing_trigger_rate'])}  (low-confidence re-retrieval fired)")
     print("=" * 60 + "\n")
 
 
