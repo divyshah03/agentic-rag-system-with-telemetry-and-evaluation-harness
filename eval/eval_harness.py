@@ -393,10 +393,11 @@ async def main_async(args: argparse.Namespace) -> None:
         dataset = dataset[: args.limit]
 
     print(f"Running {len(dataset)} questions against collection '{args.collection}' "
-          f"(top_k={args.top_k}, retrieval_mode={args.retrieval_mode}, concurrency={args.concurrency})...")
+          f"(top_k={args.top_k}, retrieval_mode={args.retrieval_mode}, "
+          f"enable_routing={args.enable_routing}, concurrency={args.concurrency})...")
     semaphore = asyncio.Semaphore(args.concurrency)
     tasks = [
-        evaluate_item(item, args.top_k, args.collection, args.retrieval_mode, semaphore)
+        evaluate_item(item, args.top_k, args.collection, args.retrieval_mode, args.enable_routing, semaphore)
         for item in dataset
     ]
     results = []
@@ -408,7 +409,7 @@ async def main_async(args: argparse.Namespace) -> None:
 
     results.sort(key=lambda r: r["id"])
     summary = compute_summary(
-        results, args.run_label, args.top_k, args.collection, args.retrieval_mode, dataset_path
+        results, args.run_label, args.top_k, args.collection, args.retrieval_mode, args.enable_routing, dataset_path
     )
     print_summary(summary)
 
@@ -430,6 +431,10 @@ def parse_args() -> argparse.Namespace:
                          help="retrieval strategy passed to rag/query_pdf_ai (default: hybrid, "
                               "matching the server default; use 'dense' to reproduce the "
                               "original dense-only baseline)")
+    parser.add_argument("--enable-routing", action=argparse.BooleanOptionalAction, default=True,
+                         help="enable confidence-gated re-retrieval on the hybrid path (default: "
+                              "true, matching the server default; pass --no-enable-routing for a "
+                              "routing-off comparison run)")
     parser.add_argument("--run-label", default="baseline", help="tag for this run, e.g. 'baseline' or 'hybrid-retrieval'")
     parser.add_argument("--limit", type=int, default=None, help="only run the first N questions (smoke test)")
     parser.add_argument("--concurrency", type=int, default=3, help="max concurrent in-flight questions")
