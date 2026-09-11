@@ -16,4 +16,10 @@ def route_query(collection: str, query_vector: list[float], query_text: str, top
     if triggered:
         result = hybrid_search(collection, query_vector, query_text, top_k, candidate_pool = WIDENED_CANDIDATE_POOL)
 
+    result["routing"] = {
+        "triggered": triggered,
+        "initial_confidence": initial_confidence,
+        "final_confidence": _top1_confidence(result["retrieved"]) if triggered else initial_confidence,
+        "strategy": "widen_candidate_pool" if triggered else None,
+    }
     return result
