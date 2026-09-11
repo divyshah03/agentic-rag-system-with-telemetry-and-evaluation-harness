@@ -127,11 +127,20 @@ with st.form("rag_query_form"):
             # Poll the local Inngest API for the run's output
             output = wait_for_run_output(event_id)
             answer = output.get("answer", "")
-            sources = output.get("sources", [])
+            retrieved_chunks = output.get("retrieved_chunks", [])
+            routing = output.get("routing") or {}
 
         st.subheader("Answer")
         st.write(answer or "(No answer)")
-        if sources:
-            st.caption("Sources")
-            for s in sources:
-                st.write(f"- {s}")
+
+        if routing.get("triggered"):
+            st.caption(
+                f"🧭 Routing triggered — low-confidence top result, re-retrieved "
+                f"with a wider pool (strategy: {routing.get('strategy')})."
+            )
+
+        if retrieved_chunks:
+            with st.expander(f"Sources ({len(retrieved_chunks)} chunks retrieved)"):
+                for chunk in retrieved_chunks:
+                    st.markdown(f"**{chunk.get('source', '?')}** — score: `{chunk.get('score'):.3f}`")
+                    st.caption(chunk.get("text", ""))
