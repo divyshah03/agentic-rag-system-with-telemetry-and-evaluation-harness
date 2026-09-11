@@ -69,7 +69,9 @@ _openai_client: AsyncOpenAI | None = None
 def get_inngest_client() -> inngest.Inngest:
     global _inngest_client
     if _inngest_client is None:
-        _inngest_client = inngest.Inngest(app_id="rag_app", is_production=False)
+        # Falls back to the INNGEST_DEV env var (set INNGEST_DEV=1 to target a
+        # local dev server; leave unset to target Inngest Cloud).
+        _inngest_client = inngest.Inngest(app_id="rag_app")
     return _inngest_client
 
 
