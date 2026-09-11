@@ -65,11 +65,11 @@ Streamlit UI (streamlit_app.py)
 
 1. Question embedded with the same model
 2. Retrieval (`retrieval_mode`, default `hybrid`):
-   - `hybrid` — dense Qdrant search + BM25 keyword search over the collection, fused by Reciprocal Rank Fusion, then re-ranked by a local cross-encoder; final `retrieved_chunks[i].score` is the cross-encoder relevance score
-   - `dense` — the original cosine-similarity-only path, for reproducing pre-hybrid baseline numbers
+   - `hybrid` — dense Qdrant search + BM25 keyword search over the collection, fused by Reciprocal Rank Fusion, then re-ranked by a local cross-encoder; final `retrieved_chunks[i].score` is the cross-encoder relevance score. When `enable_routing` is true (default), a low-confidence top result triggers one re-retrieval pass with a much wider candidate pool before continuing — see [Agentic Query Routing](#-agentic-query-routing) below
+   - `dense` — the original cosine-similarity-only path, for reproducing pre-hybrid baseline numbers; routing never applies here
 3. Chunks formatted into a prompt
 4. `gpt-4o-mini` generates an answer from context only
-5. Response: `answer`, `sources`, `num_contexts`, `retrieved_chunks`
+5. Response: `answer`, `sources`, `num_contexts`, `retrieved_chunks`, `routing`
 
 ---
 
