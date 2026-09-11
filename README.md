@@ -25,7 +25,6 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 
 - SQLite query telemetry and logging
 - RAGAS integration
-- Benchmarked before/after metrics published in README
 
 ---
 
@@ -248,6 +247,24 @@ By default the harness benchmarks the current hybrid retrieval path (`--retrieva
 3. Score every pipeline version against that dataset
 4. Change retrieval or generation, re-run the harness, compare metrics
 5. Only call it an improvement when the numbers prove it
+
+### 📈 Benchmarks: baseline → final
+
+Same 80-question dataset (55 factual, 25 open-ended), 0 errors in both runs.
+
+| Metric | Baseline (dense-only) | Final (hybrid + routing + chunking fix) |
+|---|---|---|
+| Exact-match accuracy | 98.2% | **100.0%** |
+| Judge pass rate | 100.0% | 100.0% |
+| Avg judge score | 4.92 / 5 | 4.92 / 5 |
+| Overall pass rate | 98.75% | **100.0%** |
+| Retrieval hit-rate | 100.0% | 100.0% |
+| Routing trigger rate | n/a (feature didn't exist) | 13.75% |
+
+- **Baseline** — `eval/results/eval_baseline_20260829_232315.json`: cosine-only dense retrieval, before hybrid search, re-ranking, agentic routing, or the chunking fix existed.
+- **Final** — `eval/results/eval_chunk-fix-rerun_20260911_141534.json`: BM25 + dense hybrid retrieval fused by RRF, cross-encoder re-ranking, confidence-gated re-retrieval, and page-joined chunking (see [Agentic Query Routing](#-agentic-query-routing) and AGENTS.md).
+- The single point of factual-accuracy headroom in the baseline (98.2% → 100%) was exactly one failure mode: a source document's list item got orphaned from its section header by a chunking bug (`pr_018`, detailed above) — closed by joining PDF pages before splitting, not by retrieval tuning.
+- Routing's 13.75% trigger rate has no baseline column to compare against since confidence-gated re-retrieval didn't exist yet — it's there to show the safety net actually engages on real queries, not that it moved this particular metric (this small eval corpus mostly didn't have anything left to find once widening the pool).
 
 ---
 
