@@ -4,6 +4,12 @@ An **evaluation-driven Retrieval-Augmented Generation (RAG)** system for PDF doc
 
 Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask natural-language questions. Every retrieval returns structured chunks with similarity scores, and an automated eval harness scores pipeline changes against ground-truth Q&A pairs.
 
+### 🔗 [Try the live demo](https://agentic-rag-system-divy.streamlit.app)
+
+**https://agentic-rag-system-divy.streamlit.app**
+
+Click **"Load demo document"** to ingest a sample PDF immediately, then ask it a question — no setup required. Hosted on free tiers end-to-end (Streamlit Community Cloud, Render, Qdrant Cloud, Inngest Cloud), so the backend sleeps after 15 minutes idle: the first request after a quiet period can take 30-60s to wake it up. See [Deployment](#-deployment) for how it's hosted, or [Quick Start](#-quick-start) to run it locally instead.
+
 ---
 
 ## ✨ Features
@@ -139,6 +145,8 @@ in the results JSON plus a `routing_trigger_rate` in the run summary.
 
 ## 📋 Prerequisites
 
+For running the app locally (not needed to use the [live demo](#-try-the-live-demo)):
+
 - Python 3.13+
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for Qdrant)
@@ -148,6 +156,8 @@ in the results JSON plus a `routing_trigger_rate` in the run summary.
 ---
 
 ## 🚀 Quick Start
+
+> Want to run everything yourself instead of using the [live demo](#-try-the-live-demo)? These steps set up Qdrant, Inngest, FastAPI, and Streamlit locally — no hosted accounts needed.
 
 ### 1. Clone and install
 
@@ -350,6 +360,8 @@ The ingest function (`rag_ingest_pdf`) has two limits to prevent runaway embeddi
 
 ## 🧩 Services at a Glance
 
+For local dev (see [Deployment](#-deployment) for the hosted equivalents):
+
 | Service | Port | Command |
 |---------|------|---------|
 | Qdrant | 6333 | `docker run -p 6333:6333 qdrant/qdrant` |
@@ -363,34 +375,38 @@ You can shut down Qdrant and FastAPI while keeping Inngest running — it will j
 
 ## 🚀 Deployment
 
-Each local piece maps to a hosted equivalent:
+**This app is live** at **https://agentic-rag-system-divy.streamlit.app**, running entirely on free tiers:
 
-| Local | Hosted |
-|-------|--------|
-| Qdrant (Docker) | [Qdrant Cloud](https://cloud.qdrant.io) free cluster |
-| `inngest dev` | [Inngest Cloud](https://www.inngest.com) free tier |
-| `uvicorn app.main:app` | [Render](https://render.com) free Web Service |
-| `streamlit run streamlit_app.py` | [Streamlit Community Cloud](https://streamlit.io/cloud) |
+| Local (this repo) | Hosted (live) | Status |
+|--------------------|---------------|--------|
+| Qdrant (Docker) | [Qdrant Cloud](https://cloud.qdrant.io) free cluster | ✅ deployed |
+| `inngest dev` | [Inngest Cloud](https://www.inngest.com) free tier | ✅ deployed |
+| `uvicorn app.main:app` | [Render](https://render.com) free Web Service | ✅ deployed |
+| `streamlit run streamlit_app.py` | [Streamlit Community Cloud](https://streamlit.io/cloud) | ✅ deployed |
 
-**Render (backend) setup:**
+The sections below document how each piece is configured, in case you want to fork this repo and deploy your own copy.
+
+**Render (backend):**
 - Build command: `pip install uv && uv sync --frozen --no-dev`
 - Start command: `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-- Set `PYTHON_VERSION=3.13` (or the equivalent runtime setting) — this project requires Python ≥3.13
+- `PYTHON_VERSION=3.13` (or the equivalent runtime setting) — this project requires Python ≥3.13
 - Env vars: `OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`
 
-**Inngest Cloud setup:** create an app, copy its Event Key and Signing Key. Once
-the backend is deployed, sync the app against `https://<your-render-app>.onrender.com/api/inngest`
-(the default path `inngest.fast_api.serve()` mounts — no path configuration needed).
+**Inngest Cloud:** the app is synced against the Render backend's `/api/inngest`
+endpoint (the default path `inngest.fast_api.serve()` mounts — no path
+configuration needed). If you redeploy your own backend, re-sync the app in
+the Inngest dashboard against your new backend's `https://<your-app>.onrender.com/api/inngest`.
 
-**Streamlit Community Cloud setup:** deploy `streamlit_app.py` from this repo,
-then set `BACKEND_URL`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, and
-`INNGEST_API_BASE=https://api.inngest.com/v1` in the app's **Secrets** panel.
-`OPENAI_API_KEY` is not needed here — only the backend calls OpenAI.
+**Streamlit Community Cloud (frontend):** deployed from this repo's
+`streamlit_app.py`, with `BACKEND_URL`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`,
+and `INNGEST_API_BASE=https://api.inngest.com/v1` set in the app's **Secrets**
+panel. `OPENAI_API_KEY` is not needed here — only the backend calls OpenAI.
 
 **Free-tier cold starts:** Render's free Web Service sleeps after 15 minutes
-idle; the first request afterward can take 30-60s to wake up. The UI shows a
-caption warning about this rather than paying for an always-on instance or
-running a keep-alive job — proportionate for a demo link.
+idle, so the first request after a quiet period on the live demo can take
+30-60s while it wakes up. The UI shows a caption warning about this rather
+than paying for an always-on instance or running a keep-alive job —
+proportionate for a demo link.
 
 ---
 
