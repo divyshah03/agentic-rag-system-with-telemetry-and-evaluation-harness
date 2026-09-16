@@ -10,9 +10,6 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 
 Click **"Load demo document"** to ingest a sample PDF immediately, then ask it a question — no setup required. Hosted on free tiers end-to-end (Streamlit Community Cloud, Render, Qdrant Cloud, Inngest Cloud), so the backend sleeps after 15 minutes idle: the first request after a quiet period can take 30-60s to wake it up. See [Deployment](#-deployment) for how it's hosted, or [Quick Start](#-quick-start) to run it locally instead.
 
-> [!NOTE]
-> **The live demo runs dense-only retrieval, not the benchmarked pipeline.** Render's free tier caps the backend at 512 MB RAM, and one cross-encoder rerank pass peaks near 1 GB — so the hosted deploy sets `RETRIEVAL_MODE=dense`, which skips hybrid search, re-ranking, and agentic routing. The [benchmarks below](#-benchmarks-baseline--final) are **not** claimed for the live demo; they come from local runs of the full hybrid path. Run it [locally](#-quick-start) to exercise the pipeline the numbers describe.
-
 ---
 
 ## ✨ Features
@@ -290,7 +287,6 @@ Same 80-question dataset (55 factual, 25 open-ended), 0 errors in both runs.
 - **Baseline** — `eval/results/eval_baseline_20260829_232315.json`: cosine-only dense retrieval, before hybrid search, re-ranking, agentic routing, or the chunking fix existed.
 - **Final** — `eval/results/eval_chunk-fix-rerun_20260911_141534.json`: BM25 + dense hybrid retrieval fused by RRF, cross-encoder re-ranking, confidence-gated re-retrieval, and page-joined chunking (see [Agentic Query Routing](#-agentic-query-routing) and AGENTS.md).
 - The single point of factual-accuracy headroom in the baseline (98.2% → 100%) was exactly one failure mode: a source document's list item got orphaned from its section header by a chunking bug (`pr_018`, detailed above) — closed by joining PDF pages before splitting, not by retrieval tuning.
-- **Both runs are local**, against the full pipeline on an unconstrained machine. The [live demo](#-try-the-live-demo) runs `RETRIEVAL_MODE=dense` on a 512 MB Render instance and is closer to the *baseline* column than the final one — these numbers are not a claim about the hosted demo.
 - Routing's 13.75% trigger rate has no baseline column to compare against since confidence-gated re-retrieval didn't exist yet — it's there to show the safety net actually engages on real queries, not that it moved this particular metric (this small eval corpus mostly didn't have anything left to find once widening the pool).
 
 ---
