@@ -3,7 +3,7 @@
 ## Project layout
 
 - `app/` — importable application package: `main.py` (FastAPI + Inngest functions), `data_loader.py`, `vector_db.py`, `hybrid_retrieval.py`, `query_router.py`, `custom_types.py`. Import these as `from app.vector_db import QdrantStorage`.
-- `streamlit_app.py` — Streamlit UI at the repo root. Sends Inngest events and polls for run output; it does not import `app/`.
+- `streamlit_app.py` — Streamlit UI at the repo root. Posts uploads and questions to the backend (`POST /uploads`, `POST /query`) and polls the Inngest REST API for run output; it does not import `app/` and does not use the Inngest SDK. Keep it that way: it runs on a separate host from the backend, and an `inngest.Inngest` client cached across Streamlit reruns breaks on the second query with `RuntimeError: Event loop is closed`, because each `asyncio.run()` closes the loop its pooled connections were bound to.
 - `eval/` — evaluation harness, ground-truth dataset, and sample PDFs. Drives the pipeline only through Inngest events, so it needs no changes when retrieval internals change.
 
 ## Commands

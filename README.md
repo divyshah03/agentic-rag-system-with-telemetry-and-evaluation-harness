@@ -50,7 +50,7 @@ Streamlit UI (streamlit_app.py)
     │                                      1. load-and-chunk   (app/data_loader)
     │                                      2. embed-and-upsert (app/data_loader + app/vector_db)
     │
-    └─ Ask question ──► Inngest event: rag/query_pdf_ai
+    └─ Ask question ──► POST {BACKEND_URL}/query ──► Inngest event: rag/query_pdf_ai
                                │
                                ▼
                          rag_query_pdf_ai:
@@ -61,9 +61,12 @@ Streamlit UI (streamlit_app.py)
                          Streamlit polls Inngest API for run output
 ```
 
-The upload goes through the backend (rather than Streamlit sending the Inngest
-event directly with a local file path) so ingestion works when Streamlit and
-the backend are deployed on separate hosts — see [Deployment](#-deployment).
+Both uploads and questions go through the backend rather than having Streamlit
+send Inngest events itself. For uploads that's because ingestion reads the file
+from the backend's own filesystem, which isn't shared once the two are deployed
+on separate hosts. For questions it keeps the Inngest SDK — and its credentials
+— out of the frontend entirely; Streamlit only needs `BACKEND_URL` plus a
+read-only key for polling run status. See [Deployment](#-deployment).
 
 ### Ingest flow
 
@@ -318,7 +321,7 @@ RAGProductionApp/
 | File | Purpose |
 |------|---------|
 | `app/main.py` | Backend entry point. Registers `rag_ingest_pdf` and `rag_query_pdf_ai` Inngest functions |
-| `streamlit_app.py` | Frontend: PDF upload, question form, Inngest event polling |
+| `streamlit_app.py` | Frontend: PDF upload, question form, Inngest run-status polling |
 | `app/data_loader.py` | `load_and_chunk_pdf()`, `embed_texts()` |
 | `app/vector_db.py` | `QdrantStorage` — auto-creates collection, upsert + `query_points` search + `scroll_all` |
 | `app/hybrid_retrieval.py` | `hybrid_search()` — BM25 + dense fusion (RRF) + cross-encoder re-ranking; `invalidate_bm25_cache()` |
@@ -337,11 +340,11 @@ environments these are set on each platform's dashboard instead — see
 | Variable | Where it's used | Required | Default | Description |
 |----------|------------------|----------|---------|-------------|
 | `OPENAI_API_KEY` | Backend | ✅ | — | Embeddings and LLM generation |
-| `INNGEST_DEV` | Backend, Streamlit, eval | ❌ | unset | Set to `1` locally to target `inngest dev` instead of Inngest Cloud |
+| `INNGEST_DEV` | Backend, eval | ❌ | unset | Set to `1` locally to target `inngest dev` instead of Inngest Cloud |
 | `QDRANT_URL` | Backend | ❌ | `http://localhost:6333` | Qdrant instance to connect to (Qdrant Cloud cluster URL when deployed) |
 | `QDRANT_API_KEY` | Backend | ❌ (✅ for Qdrant Cloud) | — | API key for Qdrant Cloud |
-| `INNGEST_EVENT_KEY` | Backend, Streamlit, eval | ❌ (✅ for Inngest Cloud) | — | Authenticates sending events to Inngest Cloud |
-| `INNGEST_SIGNING_KEY` | Backend, Streamlit | ❌ (✅ for Inngest Cloud) | — | Verifies Inngest Cloud's webhook calls to the backend; also used as the bearer token when polling the hosted run-status API |
+| `INNGEST_EVENT_KEY` | Backend, eval | ❌ (✅ for Inngest Cloud) | — | Authenticates sending events to Inngest Cloud |
+| `INNGEST_SIGNING_KEY` | Backend, Streamlit | ❌ (✅ for Inngest Cloud) | — | Verifies Inngest Cloud's webhook calls to the backend; Streamlit uses it only as the bearer token when polling the hosted run-status API |
 | `INNGEST_API_BASE` | Streamlit, eval | ❌ | `http://127.0.0.1:8288/v1` | Inngest REST API base for run-status polling (`https://api.inngest.com/v1` in production) |
 | `BACKEND_URL` | Streamlit | ❌ | `http://127.0.0.1:8000` | Public URL of the deployed FastAPI backend |
 
@@ -398,9 +401,10 @@ configuration needed). If you redeploy your own backend, re-sync the app in
 the Inngest dashboard against your new backend's `https://<your-app>.onrender.com/api/inngest`.
 
 **Streamlit Community Cloud (frontend):** deployed from this repo's
-`streamlit_app.py`, with `BACKEND_URL`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`,
-and `INNGEST_API_BASE=https://api.inngest.com/v1` set in the app's **Secrets**
-panel. `OPENAI_API_KEY` is not needed here — only the backend calls OpenAI.
+`streamlit_app.py`, with `BACKEND_URL`, `INNGEST_SIGNING_KEY`, and
+`INNGEST_API_BASE=https://api.inngest.com/v1` set in the app's **Secrets**
+panel. `OPENAI_API_KEY` is not needed here — only the backend calls OpenAI, and
+`INNGEST_EVENT_KEY` isn't either, since the backend sends every event.
 
 **Free-tier cold starts:** Render's free Web Service sleeps after 15 minutes
 idle, so the first request after a quiet period on the live demo can take
