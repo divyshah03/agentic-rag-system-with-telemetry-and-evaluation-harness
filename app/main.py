@@ -20,6 +20,14 @@ from app.query_router import route_query
 
 load_dotenv() # load environment variables from .env file
 
+# Server-side defaults for the two `rag/query_pdf_ai` knobs. Event data still
+# wins, so the eval harness (which always sends both) is unaffected. These exist
+# for the 512 MB hosted deploy: one cross-encoder rerank of the default
+# 20-candidate pool peaks near 1 GB, so that host runs `dense`, the only mode
+# that never constructs the reranker. See README's Deployment section.
+DEFAULT_RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")
+DEFAULT_ENABLE_ROUTING = os.getenv("ENABLE_ROUTING", "true").strip().lower() not in ("0", "false", "no")
+
 inngest_client = inngest.Inngest(
     app_id = "rag_app",
     logger = logging.getLogger("uvicorn"),
@@ -79,8 +87,8 @@ async def rag_query_pdf_ai(ctx: inngest.Context):
     question = ctx.event.data["question"]
     top_k = int(ctx.event.data.get("top_k", 5))
     collection = ctx.event.data.get("collection", "docs")
-    retrieval_mode = ctx.event.data.get("retrieval_mode", "hybrid")
-    enable_routing = bool(ctx.event.data.get("enable_routing", True))
+    retrieval_mode = ctx.event.data.get("retrieval_mode", DEFAULT_RETRIEVAL_MODE)
+    enable_routing = bool(ctx.event.data.get("enable_routing", DEFAULT_ENABLE_ROUTING))
 
     found = await ctx.step.run("embed-and-search", lambda: _search(question, top_k, collection, retrieval_mode, enable_routing), output_type = RAGSearchResult)
 
