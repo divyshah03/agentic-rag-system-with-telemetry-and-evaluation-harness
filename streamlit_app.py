@@ -28,17 +28,28 @@ def trigger_ingest(filename: str, file_bytes: bytes) -> None:
     # Uploaded through the backend (not saved locally) since Streamlit and the
     # backend run on separate hosts once deployed — only the backend's own
     # filesystem is guaranteed to be readable by the ingest step that follows.
-    resp = requests.post(
-        f"{BACKEND_URL}/uploads",
-        files = {"file": (filename, file_bytes, "application/pdf")},
-        timeout = 60,
-    )
+    #
+    # Render's free tier can take well over a minute to cold-start a sleeping
+    # backend, so the first request after inactivity gets a generous timeout;
+    # a retry (now against an already-awake backend) gets a short one.
+    try:
+        resp = requests.post(
+            f"{BACKEND_URL}/uploads",
+            files = {"file": (filename, file_bytes, "application/pdf")},
+            timeout = 120,
+        )
+    except requests.exceptions.ReadTimeout:
+        resp = requests.post(
+            f"{BACKEND_URL}/uploads",
+            files = {"file": (filename, file_bytes, "application/pdf")},
+            timeout = 30,
+        )
     resp.raise_for_status()
 
 
 st.title("Upload a PDF to Ingest")
 st.caption(
-    "First request after a period of inactivity can take up to a minute "
+    "First request after a period of inactivity can take up to two minutes "
     "while the backend wakes up from its free-tier sleep."
 )
 
