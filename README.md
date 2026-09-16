@@ -10,6 +10,9 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 
 Click **"Load demo document"** to ingest a sample PDF immediately, then ask it a question — no setup required. Hosted on free tiers end-to-end (Streamlit Community Cloud, Render, Qdrant Cloud, Inngest Cloud), so the backend sleeps after 15 minutes idle: the first request after a quiet period can take 30-60s to wake it up. See [Deployment](#-deployment) for how it's hosted, or [Quick Start](#-quick-start) to run it locally instead.
 
+> [!NOTE]
+> **The live demo runs dense-only retrieval, not the benchmarked pipeline.** Render's free tier caps the backend at 512 MB RAM, and one cross-encoder rerank pass peaks near 1 GB — so the hosted deploy sets `RETRIEVAL_MODE=dense`, which skips hybrid search, re-ranking, and agentic routing. The [benchmarks below](#-benchmarks-baseline--final) are **not** claimed for the live demo; they come from local runs of the full hybrid path. Run it [locally](#-quick-start) to exercise the pipeline the numbers describe.
+
 ---
 
 ## ✨ Features
@@ -287,6 +290,7 @@ Same 80-question dataset (55 factual, 25 open-ended), 0 errors in both runs.
 - **Baseline** — `eval/results/eval_baseline_20260829_232315.json`: cosine-only dense retrieval, before hybrid search, re-ranking, agentic routing, or the chunking fix existed.
 - **Final** — `eval/results/eval_chunk-fix-rerun_20260911_141534.json`: BM25 + dense hybrid retrieval fused by RRF, cross-encoder re-ranking, confidence-gated re-retrieval, and page-joined chunking (see [Agentic Query Routing](#-agentic-query-routing) and AGENTS.md).
 - The single point of factual-accuracy headroom in the baseline (98.2% → 100%) was exactly one failure mode: a source document's list item got orphaned from its section header by a chunking bug (`pr_018`, detailed above) — closed by joining PDF pages before splitting, not by retrieval tuning.
+- **Both runs are local**, against the full pipeline on an unconstrained machine. The [live demo](#-try-the-live-demo) runs `RETRIEVAL_MODE=dense` on a 512 MB Render instance and is closer to the *baseline* column than the final one — these numbers are not a claim about the hosted demo.
 - Routing's 13.75% trigger rate has no baseline column to compare against since confidence-gated re-retrieval didn't exist yet — it's there to show the safety net actually engages on real queries, not that it moved this particular metric (this small eval corpus mostly didn't have anything left to find once widening the pool).
 
 ---
@@ -347,6 +351,13 @@ environments these are set on each platform's dashboard instead — see
 | `INNGEST_SIGNING_KEY` | Backend, Streamlit | ❌ (✅ for Inngest Cloud) | — | Verifies Inngest Cloud's webhook calls to the backend; Streamlit uses it only as the bearer token when polling the hosted run-status API |
 | `INNGEST_API_BASE` | Streamlit, eval | ❌ | `http://127.0.0.1:8288/v1` | Inngest REST API base for run-status polling (`https://api.inngest.com/v1` in production) |
 | `BACKEND_URL` | Streamlit | ❌ | `http://127.0.0.1:8000` | Public URL of the deployed FastAPI backend |
+| `RETRIEVAL_MODE` | Backend | ❌ | `hybrid` | Server-side default for `rag/query_pdf_ai`'s retrieval strategy. Set to `dense` on memory-capped hosts — it's the only mode that never loads the cross-encoder (see [Deployment](#-deployment)) |
+| `ENABLE_ROUTING` | Backend | ❌ | `true` | Server-side default for confidence-gated re-retrieval. Only meaningful on the `hybrid` path; `dense` bypasses routing regardless |
+
+Both retrieval vars set **defaults only** — a `rag/query_pdf_ai` event that
+carries its own `retrieval_mode` / `enable_routing` always wins. `eval_harness.py`
+always sends both explicitly, so the published benchmarks are reproducible no
+matter how the server is configured.
 
 ---
 
@@ -393,7 +404,37 @@ The sections below document how each piece is configured, in case you want to fo
 - Build command: `pip install uv && uv sync --frozen --no-dev`
 - Start command: `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - `PYTHON_VERSION=3.13` (or the equivalent runtime setting) — this project requires Python ≥3.13
-- Env vars: `OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`
+- Env vars: `OPENAI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`, **`RETRIEVAL_MODE=dense`**, **`ENABLE_ROUTING=false`**
+
+**Why the hosted backend runs dense-only retrieval.** Render's free Web Service
+(and its $7 Starter plan) both cap RAM at 512 MB, and the cross-encoder does not
+fit. Measured peak RSS of the query path on this codebase:
+
+| Query path | Peak RSS |
+|---|---|
+| `import app.main` alone (LlamaIndex + OpenAI + qdrant-client) | ~300 MB |
+| + BM25 index over 120 chunks | ~305 MB |
+| + cross-encoder loaded, **no** rerank yet | ~457 MB |
+| + rerank of the default 20-candidate pool | **~990 MB** |
+| + rerank of routing's widened 60-candidate pool | **~2.2 GB** |
+
+`fastembed`'s `TextCrossEncoder.rerank()` defaults to `batch_size=64`, so a
+20- or 60-candidate pool goes through as a single batch and allocates
+activations for all of it at once. Forcing `batch_size=1` only gets peak down
+to ~483 MB — 94% of the cap, before uvicorn's own request handling — so
+re-ranking is not salvageable at 512 MB, batched or not. Only `dense` mode
+never constructs the reranker at all.
+
+This is why the query function died while ingest was fine: ingestion never
+touches `fastembed`. Inngest reported it as *"No step output was produced
+before the request failed"* — the OOM killer taking the worker mid-step, not a
+proxy timeout (Render's HTTP ceiling is 100 minutes).
+
+**To run the full hybrid + rerank + routing path in a hosted deploy**, you need
+≥2 GB RAM — on Render that's the Standard plan, since Starter is still 512 MB.
+Leave `RETRIEVAL_MODE`/`ENABLE_ROUTING` unset there and it runs the benchmarked
+pipeline. Setting `RETRIEVAL_MODE=hybrid` with `ENABLE_ROUTING=false` does *not*
+save memory — the hybrid path always re-ranks; routing only widens the pool.
 
 **Inngest Cloud:** the app is synced against the Render backend's `/api/inngest`
 endpoint (the default path `inngest.fast_api.serve()` mounts — no path
