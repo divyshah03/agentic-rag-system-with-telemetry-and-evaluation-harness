@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, UploadFile
 import inngest
 import inngest.fast_api
+import pydantic
 from inngest.experimental import ai
 
 from dotenv import load_dotenv
@@ -138,6 +139,27 @@ async def upload_pdf(file: UploadFile):
             data = {
                 "pdf_path": str(dest.resolve()),
                 "source_id": file.filename,
+            },
+        )
+    )
+    return {"event_id": ids[0]}
+
+
+class QueryRequest(pydantic.BaseModel):
+    question: str
+    top_k: int = 5
+
+
+@app.post("/query")
+async def query_pdf(req: QueryRequest):
+    # Sent from here rather than from Streamlit so the frontend needs no
+    # Inngest credentials and no async event loop of its own.
+    ids = await inngest_client.send(
+        inngest.Event(
+            name = "rag/query_pdf_ai",
+            data = {
+                "question": req.question,
+                "top_k": req.top_k,
             },
         )
     )
