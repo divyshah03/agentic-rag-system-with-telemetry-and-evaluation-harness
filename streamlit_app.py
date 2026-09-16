@@ -1,9 +1,7 @@
-import asyncio
 from pathlib import Path
 import time
 
 import streamlit as st
-import inngest
 from dotenv import load_dotenv
 import os
 import requests
@@ -14,14 +12,6 @@ st.set_page_config(page_title = "RAG Ingest PDF", page_icon = "📄", layout = "
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 DEMO_PDF_PATH = Path(__file__).parent / "eval" / "pdfs" / "employee_handbook.pdf"
-
-
-@st.cache_resource
-def get_inngest_client() -> inngest.Inngest:
-    # Falls back to the INNGEST_DEV env var: set INNGEST_DEV=1 locally, leave
-    # unset when deployed so the SDK sends events to Inngest Cloud instead of
-    # a local dev server.
-    return inngest.Inngest(app_id = "rag_app")
 
 
 def trigger_ingest(filename: str, file_bytes: bytes) -> None:
@@ -73,19 +63,17 @@ st.divider()
 st.title("Ask a question about your PDFs")
 
 
-async def send_rag_query_event(question: str, top_k: int) -> None:
-    client = get_inngest_client()
-    result = await client.send(
-        inngest.Event(
-            name = "rag/query_pdf_ai",
-            data={
-                "question": question,
-                "top_k": top_k,
-            },
-        )
-    )
-
-    return result[0]
+def request_query(question: str, top_k: int) -> str:
+    # The backend sends the Inngest event, so this frontend needs no Inngest
+    # credentials and no event loop of its own. Same cold-start retry shape as
+    # trigger_ingest: a generous first attempt, a short one once it's awake.
+    payload = {"question": question, "top_k": top_k}
+    try:
+        resp = requests.post(f"{BACKEND_URL}/query", json = payload, timeout = 120)
+    except requests.exceptions.ReadTimeout:
+        resp = requests.post(f"{BACKEND_URL}/query", json = payload, timeout = 30)
+    resp.raise_for_status()
+    return resp.json()["event_id"]
 
 
 def _inngest_api_base() -> str:
@@ -133,9 +121,9 @@ with st.form("rag_query_form"):
 
     if submitted and question.strip():
         with st.spinner("Sending event and generating answer..."):
-            # Fire-and-forget event to Inngest for observability/workflow
-            event_id = asyncio.run(send_rag_query_event(question.strip(), int(top_k)))
-            # Poll the local Inngest API for the run's output
+            # Backend fires the Inngest event and hands back its id
+            event_id = request_query(question.strip(), int(top_k))
+            # Poll the Inngest API for the run's output
             output = wait_for_run_output(event_id)
             answer = output.get("answer", "")
             retrieved_chunks = output.get("retrieved_chunks", [])
