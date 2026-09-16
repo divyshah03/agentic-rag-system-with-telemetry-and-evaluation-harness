@@ -14,27 +14,32 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
 DEMO_PDF_PATH = Path(__file__).parent / "eval" / "pdfs" / "employee_handbook.pdf"
 
 
+def post_backend(path: str, **kwargs) -> dict:
+    # Render's free tier can take well over a minute to cold-start a sleeping
+    # backend, so the first request after inactivity gets a generous timeout;
+    # a retry (now against an already-awake backend) gets a short one.
+    url = f"{BACKEND_URL}{path}"
+    try:
+        resp = requests.post(url, timeout = 120, **kwargs)
+    except requests.exceptions.ReadTimeout:
+        resp = requests.post(url, timeout = 30, **kwargs)
+
+    if not resp.ok:
+        # Reported rather than raised: Streamlit Cloud redacts the text of
+        # uncaught exceptions, which hides the status code needed to tell a
+        # missing endpoint (stale deploy) from a backend-side failure.
+        st.error(f"Backend returned HTTP {resp.status_code} for POST {path}.")
+        st.code(resp.text[:1000] or "(empty response body)")
+        st.stop()
+
+    return resp.json()
+
+
 def trigger_ingest(filename: str, file_bytes: bytes) -> None:
     # Uploaded through the backend (not saved locally) since Streamlit and the
     # backend run on separate hosts once deployed — only the backend's own
     # filesystem is guaranteed to be readable by the ingest step that follows.
-    #
-    # Render's free tier can take well over a minute to cold-start a sleeping
-    # backend, so the first request after inactivity gets a generous timeout;
-    # a retry (now against an already-awake backend) gets a short one.
-    try:
-        resp = requests.post(
-            f"{BACKEND_URL}/uploads",
-            files = {"file": (filename, file_bytes, "application/pdf")},
-            timeout = 120,
-        )
-    except requests.exceptions.ReadTimeout:
-        resp = requests.post(
-            f"{BACKEND_URL}/uploads",
-            files = {"file": (filename, file_bytes, "application/pdf")},
-            timeout = 30,
-        )
-    resp.raise_for_status()
+    post_backend("/uploads", files = {"file": (filename, file_bytes, "application/pdf")})
 
 
 st.title("Upload a PDF to Ingest")
@@ -65,15 +70,8 @@ st.title("Ask a question about your PDFs")
 
 def request_query(question: str, top_k: int) -> str:
     # The backend sends the Inngest event, so this frontend needs no Inngest
-    # credentials and no event loop of its own. Same cold-start retry shape as
-    # trigger_ingest: a generous first attempt, a short one once it's awake.
-    payload = {"question": question, "top_k": top_k}
-    try:
-        resp = requests.post(f"{BACKEND_URL}/query", json = payload, timeout = 120)
-    except requests.exceptions.ReadTimeout:
-        resp = requests.post(f"{BACKEND_URL}/query", json = payload, timeout = 30)
-    resp.raise_for_status()
-    return resp.json()["event_id"]
+    # credentials and no event loop of its own.
+    return post_backend("/query", json = {"question": question, "top_k": top_k})["event_id"]
 
 
 def _inngest_api_base() -> str:
@@ -91,7 +89,14 @@ def fetch_runs(event_id: str) -> list[dict]:
     if signing_key and "127.0.0.1" not in url and "localhost" not in url:
         headers["Authorization"] = f"Bearer {signing_key}"
     resp = requests.get(url, headers = headers)
-    resp.raise_for_status()
+
+    if not resp.ok:
+        # Same reasoning as post_backend: a redacted traceback here would hide
+        # whether polling failed on auth (401) or on the run itself.
+        st.error(f"Inngest run-status API returned HTTP {resp.status_code}.")
+        st.code(resp.text[:1000] or "(empty response body)")
+        st.stop()
+
     data = resp.json()
     return data.get("data", [])
 
