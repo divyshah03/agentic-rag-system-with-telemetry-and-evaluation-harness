@@ -232,3 +232,6 @@ uploads/
 
 # Eval harness output (regenerate by re-running eval/eval_harness.py)
 eval/results/*.json
+
+# onnxruntime telemetry id, dropped in cwd when the cross-encoder loads
+:memory:.ses
