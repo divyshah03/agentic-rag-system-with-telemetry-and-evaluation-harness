@@ -10,7 +10,7 @@ Upload PDFs through a Streamlit UI, ingest them into a vector store, and ask nat
 
 Click **"Load demo document"** to ingest a sample PDF immediately, then ask it a question — no setup required. Hosted on free tiers end-to-end (Streamlit Community Cloud, Render, Qdrant Cloud, Inngest Cloud), so the backend sleeps after 15 minutes idle: the first request after a quiet period can take 30-60s to wake it up. See [Deployment](#-deployment) for how it's hosted, or [Quick Start](#-quick-start) to run it locally instead.
 
-<img src="docs/images/query-with-routing.png" width="700" alt="A question answered from retrieved PDF context, with the confidence gate re-retrieving on a low-confidence top result">
+<img src="docs/images/query-with-routing.png" width="560" alt="A question answered from retrieved PDF context, with the confidence gate re-retrieving on a low-confidence top result">
 
 *Answering from retrieved context, with the [confidence gate](#-agentic-query-routing) firing on a broad question and re-retrieving over a wider candidate pool. Local run of the full hybrid pipeline.*
 
