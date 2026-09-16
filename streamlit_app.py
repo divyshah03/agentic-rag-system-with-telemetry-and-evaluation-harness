@@ -101,7 +101,10 @@ def fetch_runs(event_id: str) -> list[dict]:
     return data.get("data", [])
 
 
-def wait_for_run_output(event_id: str, timeout_s: float = 120.0, poll_interval_s: float = 0.5) -> dict:
+def wait_for_run_output(event_id: str, timeout_s: float = 300.0, poll_interval_s: float = 1.0) -> dict:
+    # A first query on a cold free-tier backend legitimately runs for minutes:
+    # the cross-encoder model is downloaded and loaded, and the BM25 index is
+    # rebuilt from Qdrant, before any reranking happens.
     start = time.time()
     last_status = None
     while True:
@@ -113,9 +116,25 @@ def wait_for_run_output(event_id: str, timeout_s: float = 120.0, poll_interval_s
             if status in ("Completed", "Succeeded", "Success", "Finished"):
                 return run.get("output") or {}
             if status in ("Failed", "Cancelled"):
-                raise RuntimeError(f"Function run {status}")
+                st.error(f"The Inngest run {status.lower()}. See the run's timeline in the Inngest dashboard.")
+                st.stop()
         if time.time() - start > timeout_s:
-            raise TimeoutError(f"Timed out waiting for run output (last status: {last_status})")
+            # Reported rather than raised so the last status survives Streamlit
+            # Cloud's redaction: no status at all means no function run was ever
+            # created for the event (typically an unsynced Inngest app), which
+            # is a different problem from a run that is merely slow.
+            if last_status is None:
+                st.error(
+                    f"No Inngest run appeared for event {event_id} within {timeout_s:.0f}s. "
+                    "The event was accepted but nothing picked it up — check that the Inngest "
+                    "Cloud app is synced against the deployed backend's /api/inngest."
+                )
+            else:
+                st.error(
+                    f"Timed out after {timeout_s:.0f}s waiting for the answer "
+                    f"(last run status: {last_status})."
+                )
+            st.stop()
         time.sleep(poll_interval_s)
 
 
