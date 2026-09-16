@@ -54,7 +54,7 @@ st.caption(
 )
 
 if st.button("Load demo document (employee handbook)"):
-    with st.spinner("Uploading and triggering ingestion..."):
+    with st.spinner("Uploading and triggering ingestion — this can take up to 2 minutes if the backend is waking up..."):
         trigger_ingest(DEMO_PDF_PATH.name, DEMO_PDF_PATH.read_bytes())
         time.sleep(0.3)
     st.success(f"Triggered ingestion for: {DEMO_PDF_PATH.name}")
@@ -62,7 +62,7 @@ if st.button("Load demo document (employee handbook)"):
 uploaded = st.file_uploader("Or choose your own PDF", type = ["pdf"], accept_multiple_files = False)
 
 if uploaded is not None:
-    with st.spinner("Uploading and triggering ingestion..."):
+    with st.spinner("Uploading and triggering ingestion — this can take up to 2 minutes if the backend is waking up..."):
         trigger_ingest(uploaded.name, uploaded.getvalue())
         # Small pause for user feedback continuity
         time.sleep(0.3)
