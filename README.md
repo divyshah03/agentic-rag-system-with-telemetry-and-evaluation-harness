@@ -18,7 +18,7 @@ Click **"Load demo document"** to ingest a sample PDF immediately, then ask it a
 
 ## ✨ Features
 
-### ✅ Implemented today
+### ✅ Implemented 
 
 - **📥 PDF ingestion** — Upload PDFs; they are chunked, embedded, and stored in Qdrant
 - **🔍 Hybrid retrieval** — BM25 keyword search + dense cosine search over OpenAI embeddings (`text-embedding-3-large`, 3072-dim), fused with Reciprocal Rank Fusion
